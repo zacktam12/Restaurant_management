@@ -220,6 +220,65 @@ class Booking {
     }
 
     /**
+     * Get tour participants for a specific tour booking
+     */
+    public function getTourParticipants($bookingId) {
+        // For tour bookings, participants are tracked in the guests field
+        $booking = $this->getBookingById($bookingId);
+        
+        if ($booking && $booking['service_type'] == 'tour') {
+            return [
+                'booking_id' => $booking['id'],
+                'tour_id' => $booking['service_id'],
+                'participants' => $booking['guests'],
+                'participant_names' => $booking['special_requests'] ?? 'Not specified',
+                'booking_date' => $booking['date'],
+                'customer_name' => $this->getCustomerName($booking['customer_id'])
+            ];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get customer name by ID
+     */
+    private function getCustomerName($customerId) {
+        require_once 'User.php';
+        $userManager = new User();
+        $user = $userManager->getUserById($customerId);
+        return $user ? $user['name'] : 'Unknown';
+    }
+
+    /**
+     * Get all tour bookings with participant information
+     */
+    public function getAllTourBookingsWithParticipants() {
+        $query = "SELECT * FROM {$this->table} WHERE service_type = 'tour' ORDER BY created_at DESC";
+        
+        try {
+            $bookings = $this->db->select($query);
+            $tourBookings = [];
+            
+            foreach ($bookings as $booking) {
+                $tourBookings[] = [
+                    'booking_id' => $booking['id'],
+                    'tour_id' => $booking['service_id'],
+                    'customer_name' => $this->getCustomerName($booking['customer_id']),
+                    'participants' => $booking['guests'],
+                    'booking_date' => $booking['date'],
+                    'status' => $booking['status'],
+                    'created_at' => $booking['created_at']
+                ];
+            }
+            
+            return $tourBookings;
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Close database connection
      */
     public function close() {
