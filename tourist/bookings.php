@@ -93,46 +93,42 @@ foreach ($reservations as $reservation) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Bookings - Restaurant Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <i class="bi bi-compass"></i> Tourist Portal
+                Tourist Portal
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+            <div class="navbar-collapse">
+                <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="index.php">
-                            <i class="bi bi-shop"></i> Restaurants
+                            Restaurants
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="bookings.php">
-                            <i class="bi bi-calendar-check"></i> My Bookings
+                            My Bookings
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="places.php">
-                            <i class="bi bi-map"></i> Places to Visit
+                            Places to Visit
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="services.php">
-                            <i class="bi bi-gear"></i> Other Services
+                            Other Services
                         </a>
                     </li>
                 </ul>
                 <div class="navbar-nav">
-                    <span class="navbar-text me-3">
+                    <span class="navbar-text">
                         Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
-                        <span class="badge bg-light text-dark"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
+                        <span class="badge"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
                     </span>
                     <a class="btn btn-outline-light" href="../logout.php">Logout</a>
                 </div>
@@ -148,7 +144,7 @@ foreach ($reservations as $reservation) {
         <?php if (isset($message)): ?>
         <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
             <?php echo htmlspecialchars($message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close"></button>
         </div>
         <?php endif; ?>
         
@@ -158,7 +154,7 @@ foreach ($reservations as $reservation) {
             <p><?php echo htmlspecialchars($message); ?></p>
             <hr>
             <div class="d-flex">
-                <a href="bookings.php" class="btn btn-secondary me-2">Cancel</a>
+                <a href="bookings.php" class="btn btn-secondary">Cancel</a>
                 <form method="GET" class="d-inline">
                     <input type="hidden" name="cancel_confirmed" value="1">
                     <input type="hidden" name="id" value="<?php echo $_GET['confirm_cancel']; ?>">
@@ -171,12 +167,11 @@ foreach ($reservations as $reservation) {
         <!-- Upcoming Reservations -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Upcoming Reservations</h5>
+                <h5 class="mb-0">Upcoming Reservations</h5>
             </div>
             <div class="card-body">
                 <?php if (empty($upcomingReservations)): ?>
                 <div class="text-center py-4">
-                    <i class="bi bi-calendar-x fs-1 text-muted"></i>
                     <h4 class="mt-3">No upcoming reservations</h4>
                     <p class="text-muted">You don't have any upcoming restaurant reservations.</p>
                     <a href="index.php" class="btn btn-primary">Browse Restaurants</a>
@@ -220,7 +215,7 @@ foreach ($reservations as $reservation) {
                                     <form method="GET">
                                         <input type="hidden" name="confirm_cancel" value="<?php echo $reservation['id']; ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            <i class="bi bi-x-circle"></i> Cancel
+                                            Cancel
                                         </button>
                                     </form>
                                     <?php endif; ?>
@@ -237,18 +232,17 @@ foreach ($reservations as $reservation) {
         <!-- Past Reservations -->
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Past Reservations</h5>
+                <h5 class="mb-0">Past Reservations</h5>
             </div>
             <div class="card-body">
                 <?php if (empty($pastReservations)): ?>
                 <div class="text-center py-4">
-                    <i class="bi bi-clock fs-1 text-muted"></i>
                     <h4 class="mt-3">No past reservations</h4>
                     <p class="text-muted">Your past restaurant reservations will appear here.</p>
                 </div>
                 <?php else: ?>
                 <div class="table-responsive">
-                    <table class="table table-striped">
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Restaurant</th>
@@ -289,7 +283,7 @@ foreach ($reservations as $reservation) {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/app.js"></script>
 </body>
 </html>
 
