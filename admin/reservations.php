@@ -20,6 +20,13 @@ require_once '../backend/Restaurant.php';
 $reservationManager = new Reservation();
 $restaurantManager = new Restaurant();
 
+// Handle delete confirmation
+if (isset($_GET['confirm_delete'])) {
+    $reservationId = $_GET['confirm_delete'];
+    
+    // We'll handle the actual deletion through a GET request
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
@@ -35,6 +42,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
         }
     }
+} else if (isset($_GET['confirm_delete'])) {
+    // Handle delete confirmation through GET parameters
+    $reservationId = $_GET['confirm_delete'];
+    
+    // Show confirmation message
+    $reservation = $reservationManager->getReservationById($reservationId);
+    if ($reservation) {
+        $message = 'Are you sure you want to delete reservation for "' . htmlspecialchars($reservation['customer_name']) . '"?';
+        $messageType = 'warning';
+        $showDeleteConfirmation = true;
+    }
+} else if (isset($_GET['delete_confirmed']) && isset($_GET['id'])) {
+    // Handle confirmed delete
+    $result = $reservationManager->deleteReservation($_GET['id']);
+    $message = $result['message'];
+    $messageType = 'info';
 }
 
 // Get all reservations
@@ -128,9 +151,25 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                 </div>
 
                 <?php if (isset($message)): ?>
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <div class="alert alert-<?php echo isset($messageType) ? $messageType : 'info'; ?> alert-dismissible fade show" role="alert">
                     <?php echo htmlspecialchars($message); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading">Confirm Deletion</h4>
+                    <p><?php echo htmlspecialchars($message); ?></p>
+                    <hr>
+                    <div class="d-flex">
+                        <a href="reservations.php" class="btn btn-secondary me-2">Cancel</a>
+                        <form method="GET" class="d-inline">
+                            <input type="hidden" name="delete_confirmed" value="1">
+                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                            <button type="submit" class="btn btn-danger">Yes, Delete Reservation</button>
+                        </form>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -220,16 +259,16 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                                             <form method="POST" class="d-inline">
                                                 <input type="hidden" name="action" value="update_status">
                                                 <input type="hidden" name="id" value="<?php echo $reservation['id']; ?>">
-                                                <select name="status" class="form-select form-select-sm mb-1" onchange="this.form.submit()">
+                                                <select name="status" class="form-select form-select-sm mb-1">
                                                     <option value="pending" <?php echo $reservation['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
                                                     <option value="confirmed" <?php echo $reservation['status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
                                                     <option value="cancelled" <?php echo $reservation['status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
                                                     <option value="completed" <?php echo $reservation['status'] == 'completed' ? 'selected' : ''; ?>>Completed</option>
                                                 </select>
+                                                <button type="submit" class="btn btn-sm btn-outline-primary mt-1">Update</button>
                                             </form>
-                                            <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this reservation?')">
-                                                <input type="hidden" name="action" value="delete_reservation">
-                                                <input type="hidden" name="id" value="<?php echo $reservation['id']; ?>">
+                                            <form method="GET" class="d-inline">
+                                                <input type="hidden" name="confirm_delete" value="<?php echo $reservation['id']; ?>">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                                     <i class="bi bi-trash"></i>
                                                 </button>

@@ -61,6 +61,79 @@ foreach ($restaurants as $restaurant) {
         $reservationsByRestaurant[$restaurant['name']] = $count;
     }
 }
+
+// Enhanced statistics
+// Get monthly reservation trends (last 6 months)
+$monthlyReservations = [];
+for ($i = 5; $i >= 0; $i--) {
+    $month = date('Y-m', strtotime("-$i months"));
+    $startDate = date('Y-m-01', strtotime("-$i months"));
+    $endDate = date('Y-m-t', strtotime("-$i months"));
+    
+    $query = "SELECT COUNT(*) as count FROM reservations WHERE date BETWEEN ? AND ?";
+    $params = [$startDate, $endDate];
+    $paramTypes = "ss";
+    
+    try {
+        $result = $reservationManager->db->select($query, $params, $paramTypes);
+        $monthlyReservations[$month] = $result[0]['count'] ?? 0;
+    } catch (Exception $e) {
+        $monthlyReservations[$month] = 0;
+    }
+}
+
+// Get top restaurants by reservations
+$topRestaurants = [];
+$query = "SELECT r.name, COUNT(res.id) as reservation_count 
+          FROM restaurants r 
+          LEFT JOIN reservations res ON r.id = res.restaurant_id 
+          GROUP BY r.id, r.name 
+          ORDER BY reservation_count DESC 
+          LIMIT 5";
+try {
+    $topRestaurants = $restaurantManager->db->select($query);
+} catch (Exception $e) {
+    $topRestaurants = [];
+}
+
+// Get user registration trends
+$userRegistrationTrends = [];
+for ($i = 5; $i >= 0; $i--) {
+    $month = date('Y-m', strtotime("-$i months"));
+    $startDate = date('Y-m-01', strtotime("-$i months"));
+    $endDate = date('Y-m-t', strtotime("-$i months"));
+    
+    $query = "SELECT COUNT(*) as count FROM users WHERE created_at BETWEEN ? AND ?";
+    $params = [$startDate, $endDate];
+    $paramTypes = "ss";
+    
+    try {
+        $result = $userManager->db->select($query, $params, $paramTypes);
+        $userRegistrationTrends[$month] = $result[0]['count'] ?? 0;
+    } catch (Exception $e) {
+        $userRegistrationTrends[$month] = 0;
+    }
+}
+
+// Get user roles distribution
+$userRoles = [
+    'admin' => count($userManager->db->select("SELECT * FROM users WHERE role = 'admin'")),
+    'manager' => count($userManager->db->select("SELECT * FROM users WHERE role = 'manager'")),
+    'customer' => count($userManager->db->select("SELECT * FROM users WHERE role = 'customer'")),
+    'tourist' => count($userManager->db->select("SELECT * FROM users WHERE role = 'tourist'"))
+];
+
+// Get average restaurant ratings
+$avgRatings = [];
+$query = "SELECT cuisine, AVG(rating) as avg_rating, COUNT(*) as restaurant_count 
+          FROM restaurants 
+          GROUP BY cuisine 
+          ORDER BY avg_rating DESC";
+try {
+    $avgRatings = $restaurantManager->db->select($query);
+} catch (Exception $e) {
+    $avgRatings = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -71,7 +144,7 @@ foreach ($restaurants as $restaurant) {
     <title>Reports - Restaurant Management System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body>
     <!-- Navigation -->
@@ -117,8 +190,18 @@ foreach ($restaurants as $restaurant) {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="../admin/reports.php">
+                            <a class="nav-link" href="../admin/reports.php">
                                 <i class="bi bi-graph-up"></i> Reports
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../admin/api_keys.php">
+                                <i class="bi bi-key"></i> API Keys
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../admin/service_registry.php">
+                                <i class="bi bi-diagram-3"></i> Service Registry
                             </a>
                         </li>
                     </ul>
@@ -179,7 +262,32 @@ foreach ($restaurants as $restaurant) {
                                 <h5 class="card-title mb-0">Reservations by Status</h5>
                             </div>
                             <div class="card-body">
-                                <canvas id="reservationsChart" height="300"></canvas>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Status</th>
+                                                <th>Count</th>
+                                                <th>Percentage</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php 
+                                            $totalCount = array_sum($statusCounts);
+                                            $statuses = ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled', 'completed' => 'Completed'];
+                                            foreach ($statuses as $key => $label): 
+                                                $count = $statusCounts[$key];
+                                                $percentage = $totalCount > 0 ? round(($count / $totalCount) * 100, 1) : 0;
+                                            ?>
+                                            <tr>
+                                                <td><?php echo $label; ?></td>
+                                                <td><?php echo $count; ?></td>
+                                                <td><?php echo $percentage; ?>%</td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -189,7 +297,34 @@ foreach ($restaurants as $restaurant) {
                                 <h5 class="card-title mb-0">Bookings by Service Type</h5>
                             </div>
                             <div class="card-body">
-                                <canvas id="bookingsChart" height="300"></canvas>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Service Type</th>
+                                                <th>Bookings</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Tours</td>
+                                                <td><?php echo $serviceTypeCounts['tour']; ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Hotels</td>
+                                                <td><?php echo $serviceTypeCounts['hotel']; ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Taxis</td>
+                                                <td><?php echo $serviceTypeCounts['taxi']; ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Restaurants</td>
+                                                <td><?php echo $serviceTypeCounts['restaurant']; ?></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -202,7 +337,181 @@ foreach ($restaurants as $restaurant) {
                                 <h5 class="card-title mb-0">Reservations by Restaurant</h5>
                             </div>
                             <div class="card-body">
-                                <canvas id="restaurantChart" height="100"></canvas>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Restaurant</th>
+                                                <th>Reservations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($reservationsByRestaurant as $name => $count): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($name); ?></td>
+                                                <td><?php echo $count; ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Analytics Section -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Monthly Reservation Trends</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>Reservations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($monthlyReservations as $month => $count): ?>
+                                            <tr>
+                                                <td><?php echo $month; ?></td>
+                                                <td><?php echo $count; ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">User Registration Trends</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>New Users</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($userRegistrationTrends as $month => $count): ?>
+                                            <tr>
+                                                <td><?php echo $month; ?></td>
+                                                <td><?php echo $count; ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Top Restaurants by Reservations</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Restaurant</th>
+                                                <th>Reservations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($topRestaurants as $restaurant): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($restaurant['name']); ?></td>
+                                                <td><?php echo $restaurant['reservation_count']; ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">User Roles Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>User Role</th>
+                                                <th>Count</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Admin</td>
+                                                <td><?php echo $userRoles['admin']; ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Manager</td>
+                                                <td><?php echo $userRoles['manager']; ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Customer</td>
+                                                <td><?php echo $userRoles['customer']; ?></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Tourist</td>
+                                                <td><?php echo $userRoles['tourist']; ?></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Average Restaurant Ratings by Cuisine</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Cuisine</th>
+                                                <th>Average Rating</th>
+                                                <th>Number of Restaurants</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($avgRatings as $rating): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($rating['cuisine']); ?></td>
+                                                <td><?php echo number_format($rating['avg_rating'], 2); ?>/5.0</td>
+                                                <td><?php echo htmlspecialchars($rating['restaurant_count']); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -307,81 +616,6 @@ foreach ($restaurants as $restaurant) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Reservations by Status Chart
-        const reservationsCtx = document.getElementById('reservationsChart').getContext('2d');
-        const reservationsChart = new Chart(reservationsCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Pending', 'Confirmed', 'Cancelled', 'Completed'],
-                datasets: [{
-                    data: [<?php echo $statusCounts['pending']; ?>, <?php echo $statusCounts['confirmed']; ?>, <?php echo $statusCounts['cancelled']; ?>, <?php echo $statusCounts['completed']; ?>],
-                    backgroundColor: [
-                        '#ffc107',
-                        '#28a745',
-                        '#dc3545',
-                        '#6c757d'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-
-        // Bookings by Service Type Chart
-        const bookingsCtx = document.getElementById('bookingsChart').getContext('2d');
-        const bookingsChart = new Chart(bookingsCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Tours', 'Hotels', 'Taxis', 'Restaurants'],
-                datasets: [{
-                    label: 'Number of Bookings',
-                    data: [<?php echo $serviceTypeCounts['tour']; ?>, <?php echo $serviceTypeCounts['hotel']; ?>, <?php echo $serviceTypeCounts['taxi']; ?>, <?php echo $serviceTypeCounts['restaurant']; ?>],
-                    backgroundColor: [
-                        '#007bff',
-                        '#28a745',
-                        '#ffc107',
-                        '#dc3545'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Reservations by Restaurant Chart
-        const restaurantCtx = document.getElementById('restaurantChart').getContext('2d');
-        const restaurantChart = new Chart(restaurantCtx, {
-            type: 'bar',
-            data: {
-                labels: <?php echo json_encode(array_keys($reservationsByRestaurant)); ?>,
-                datasets: [{
-                    label: 'Number of Reservations',
-                    data: <?php echo json_encode(array_values($reservationsByRestaurant)); ?>,
-                    backgroundColor: '#007bff'
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    </script>
 </body>
 </html>
 

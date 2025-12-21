@@ -20,6 +20,14 @@ require_once '../backend/Menu.php';
 $restaurantManager = new Restaurant();
 $menuManager = new Menu();
 
+// Handle delete confirmation
+if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
+    $itemId = $_GET['confirm_delete'];
+    $itemType = $_GET['type'];
+    
+    // We'll handle the actual deletion through a GET request
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
@@ -88,8 +96,51 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $menuManager->deleteMenuItem($_POST['id']);
                 $message = $result['message'];
                 break;
+                
+            case 'edit_restaurant':
+                // For now, we'll just show a message that edit functionality would be implemented
+                $message = 'Edit functionality would be implemented here for restaurant ID: ' . $_POST['id'];
+                break;
+                
+            case 'edit_menu_item':
+                // For now, we'll just show a message that edit functionality would be implemented
+                $message = 'Edit functionality would be implemented here for menu item ID: ' . $_POST['id'];
+                break;
         }
     }
+} else if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
+    // Handle delete confirmation through GET parameters
+    $itemId = $_GET['confirm_delete'];
+    $itemType = $_GET['type'];
+    
+    // Show confirmation message
+    if ($itemType == 'restaurant') {
+        $restaurant = $restaurantManager->getRestaurantById($itemId);
+        if ($restaurant) {
+            $message = 'Are you sure you want to delete restaurant "' . htmlspecialchars($restaurant['name']) . '"? All menu items and reservations will also be deleted.';
+            $messageType = 'warning';
+            $showDeleteConfirmation = true;
+            $deleteItemType = 'restaurant';
+        }
+    } else if ($itemType == 'menu_item') {
+        $menuItem = $menuManager->getMenuItemById($itemId);
+        if ($menuItem) {
+            $message = 'Are you sure you want to delete menu item "' . htmlspecialchars($menuItem['name']) . '"?';
+            $messageType = 'warning';
+            $showDeleteConfirmation = true;
+            $deleteItemType = 'menu_item';
+        }
+    }
+} else if (isset($_GET['delete_confirmed']) && isset($_GET['id']) && isset($_GET['type'])) {
+    // Handle confirmed delete
+    if ($_GET['type'] == 'restaurant') {
+        $result = $restaurantManager->deleteRestaurant($_GET['id']);
+        $message = $result['message'];
+    } else if ($_GET['type'] == 'menu_item') {
+        $result = $menuManager->deleteMenuItem($_GET['id']);
+        $message = $result['message'];
+    }
+    $messageType = 'info';
 }
 
 // Get all restaurants
@@ -166,15 +217,90 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Restaurant Management</h1>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRestaurantModal">
-                        <i class="bi bi-plus-lg"></i> Add New Restaurant
-                    </button>
+                    <form method="GET">
+                        <input type="hidden" name="show_add_form" value="1">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg"></i> Add New Restaurant
+                        </button>
+                    </form>
                 </div>
 
                 <?php if (isset($message)): ?>
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <div class="alert alert-<?php echo isset($messageType) ? $messageType : 'info'; ?> alert-dismissible fade show" role="alert">
                     <?php echo htmlspecialchars($message); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading">Confirm Deletion</h4>
+                    <p><?php echo htmlspecialchars($message); ?></p>
+                    <hr>
+                    <div class="d-flex">
+                        <a href="restaurants.php" class="btn btn-secondary me-2">Cancel</a>
+                        <form method="GET" class="d-inline">
+                            <input type="hidden" name="delete_confirmed" value="1">
+                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                            <input type="hidden" name="type" value="<?php echo $deleteItemType; ?>">
+                            <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Add Restaurant Form -->
+                <?php if (isset($_GET['show_add_form']) && $_GET['show_add_form'] == '1'): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Add New Restaurant</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="add_restaurant">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Restaurant Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cuisine" class="form-label">Cuisine</label>
+                                <input type="text" class="form-control" id="cuisine" name="cuisine" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="text" class="form-control" id="phone" name="phone" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="price_range" class="form-label">Price Range</label>
+                                <select class="form-select" id="price_range" name="price_range" required>
+                                    <option value="$">$</option>
+                                    <option value="$$">$$</option>
+                                    <option value="$$$">$$$</option>
+                                    <option value="$$$$">$$$$</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="seating_capacity" class="form-label">Seating Capacity</label>
+                                <input type="number" class="form-control" id="seating_capacity" name="seating_capacity" min="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="image" class="form-label">Image URL</label>
+                                <input type="text" class="form-control" id="image" name="image">
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Add Restaurant</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -199,14 +325,20 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                                     <a href="?restaurant_id=<?php echo $restaurant['id']; ?>" class="btn btn-outline-primary btn-sm">
                                         <i class="bi bi-list"></i> Menu
                                     </a>
-                                    <button class="btn btn-outline-secondary btn-sm" 
-                                            onclick="editRestaurant(<?php echo $restaurant['id']; ?>)">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </button>
-                                    <button class="btn btn-outline-danger btn-sm" 
-                                            onclick="deleteRestaurant(<?php echo $restaurant['id']; ?>)">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="edit_restaurant">
+                                        <input type="hidden" name="id" value="<?php echo $restaurant['id']; ?>">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                    </form>
+                                    <form method="GET" class="d-inline">
+                                        <input type="hidden" name="confirm_delete" value="<?php echo $restaurant['id']; ?>">
+                                        <input type="hidden" name="type" value="restaurant">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -214,14 +346,66 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                     <?php endforeach; ?>
                 </div>
 
-                <!-- Menu Items Section -->
+                <!-- Add Menu Item Form -->
+                <?php if (isset($_GET['show_add_menu_form']) && $_GET['show_add_menu_form'] == '1' && isset($_GET['restaurant_id'])): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Add Menu Item</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="add_menu_item">
+                            <input type="hidden" name="restaurant_id" value="<?php echo $_GET['restaurant_id']; ?>">
+                            <div class="mb-3">
+                                <label for="menu_name" class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="menu_name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="menu_description" class="form-label">Description</label>
+                                <textarea class="form-control" id="menu_description" name="description" rows="2" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="price" class="form-label">Price</label>
+                                <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="appetizer">Appetizer</option>
+                                    <option value="main">Main Course</option>
+                                    <option value="dessert">Dessert</option>
+                                    <option value="beverage">Beverage</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="menu_image" class="form-label">Image URL</label>
+                                <input type="text" class="form-control" id="menu_image" name="image">
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="available" name="available" value="1" checked>
+                                    <label class="form-check-label" for="available">Available</label>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="restaurants.php?restaurant_id=<?php echo $_GET['restaurant_id']; ?>" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Add Menu Item</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <?php if ($selectedRestaurantId): ?>
                 <div class="card mt-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Menu Items</h5>
-                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addMenuItemModal">
-                            <i class="bi bi-plus-lg"></i> Add Menu Item
-                        </button>
+                        <form method="GET">
+                            <input type="hidden" name="show_add_menu_form" value="1">
+                            <input type="hidden" name="restaurant_id" value="<?php echo $selectedRestaurantId; ?>">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-lg"></i> Add Menu Item
+                            </button>
+                        </form>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -251,14 +435,20 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-primary" 
-                                                    onclick="editMenuItem(<?php echo $item['id']; ?>)">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    onclick="deleteMenuItem(<?php echo $item['id']; ?>)">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="action" value="edit_menu_item">
+                                                <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                            </form>
+                                            <form method="GET" class="d-inline">
+                                                <input type="hidden" name="confirm_delete" value="<?php echo $item['id']; ?>">
+                                                <input type="hidden" name="type" value="menu_item">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -272,153 +462,6 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
         </div>
     </div>
 
-    <!-- Add Restaurant Modal -->
-    <div class="modal fade" id="addRestaurantModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New Restaurant</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="POST">
-                    <div class="modal-body">
-                        <input type="hidden" name="action" value="add_restaurant">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Restaurant Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="cuisine" class="form-label">Cuisine</label>
-                            <input type="text" class="form-control" id="cuisine" name="cuisine" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address</label>
-                            <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="text" class="form-control" id="phone" name="phone" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="price_range" class="form-label">Price Range</label>
-                            <select class="form-select" id="price_range" name="price_range" required>
-                                <option value="$">$</option>
-                                <option value="$$">$$</option>
-                                <option value="$$$">$$$</option>
-                                <option value="$$$$">$$$$</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="seating_capacity" class="form-label">Seating Capacity</label>
-                            <input type="number" class="form-control" id="seating_capacity" name="seating_capacity" min="0">
-                        </div>
-                        <div class="mb-3">
-                            <label for="image" class="form-label">Image URL</label>
-                            <input type="text" class="form-control" id="image" name="image">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Restaurant</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Menu Item Modal -->
-    <div class="modal fade" id="addMenuItemModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Menu Item</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="POST">
-                    <div class="modal-body">
-                        <input type="hidden" name="action" value="add_menu_item">
-                        <input type="hidden" name="restaurant_id" value="<?php echo $selectedRestaurantId; ?>">
-                        <div class="mb-3">
-                            <label for="menu_name" class="form-label">Item Name</label>
-                            <input type="text" class="form-control" id="menu_name" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="menu_description" class="form-label">Description</label>
-                            <textarea class="form-control" id="menu_description" name="description" rows="2" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="price" class="form-label">Price</label>
-                            <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="category" class="form-label">Category</label>
-                            <select class="form-select" id="category" name="category" required>
-                                <option value="appetizer">Appetizer</option>
-                                <option value="main">Main Course</option>
-                                <option value="dessert">Dessert</option>
-                                <option value="beverage">Beverage</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="menu_image" class="form-label">Image URL</label>
-                            <input type="text" class="form-control" id="menu_image" name="image">
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="available" name="available" value="1" checked>
-                                <label class="form-check-label" for="available">Available</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Menu Item</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function editRestaurant(id) {
-            alert('Edit restaurant functionality would be implemented here. Restaurant ID: ' + id);
-        }
-
-        function deleteRestaurant(id) {
-            if (confirm('Are you sure you want to delete this restaurant? All menu items and reservations will also be deleted.')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="delete_restaurant">
-                    <input type="hidden" name="id" value="${id}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function editMenuItem(id) {
-            alert('Edit menu item functionality would be implemented here. Menu Item ID: ' + id);
-        }
-
-        function deleteMenuItem(id) {
-            if (confirm('Are you sure you want to delete this menu item?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="delete_menu_item">
-                    <input type="hidden" name="id" value="${id}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-    </script>
 </body>
 </html>
 

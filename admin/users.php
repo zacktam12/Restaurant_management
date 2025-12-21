@@ -17,6 +17,72 @@ require_once '../backend/config.php';
 require_once '../backend/User.php';
 
 $userManager = new User();
+
+// Handle delete confirmation
+if (isset($_GET['confirm_delete'])) {
+    $userId = $_GET['confirm_delete'];
+    
+    // We'll handle the actual deletion through a GET request
+}
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'add_user':
+                $name = $_POST['name'] ?? '';
+                $email = $_POST['email'] ?? '';
+                $password = $_POST['password'] ?? '';
+                $role = $_POST['role'] ?? '';
+                $phone = $_POST['phone'] ?? '';
+                $professional_details = $_POST['professional_details'] ?? '';
+                
+                // Validate input
+                if (empty($name) || empty($email) || empty($password) || empty($role)) {
+                    $message = 'Please fill in all required fields.';
+                    $messageType = 'danger';
+                } else {
+                    // Attempt registration
+                    $result = $userManager->register($name, $email, $password, $role, $phone, $professional_details);
+                    
+                    if ($result['success']) {
+                        $message = 'User added successfully!';
+                        $messageType = 'success';
+                    } else {
+                        $message = $result['message'];
+                        $messageType = 'danger';
+                    }
+                }
+                break;
+                
+            case 'edit_user':
+                $message = 'Edit functionality would be implemented here for user ID: ' . $_POST['id'];
+                $messageType = 'info';
+                break;
+                
+            case 'delete_user':
+                $message = 'Delete functionality would be implemented here for user ID: ' . $_POST['id'];
+                $messageType = 'info';
+                break;
+        }
+    }
+} else if (isset($_GET['confirm_delete'])) {
+    // Handle delete confirmation through GET parameters
+    $userId = $_GET['confirm_delete'];
+    
+    // Show confirmation message
+    $user = $userManager->getUserById($userId);
+    if ($user) {
+        $message = 'Are you sure you want to delete user "' . htmlspecialchars($user['name']) . '"?';
+        $messageType = 'warning';
+        $showDeleteConfirmation = true;
+    }
+} else if (isset($_GET['delete_confirmed']) && isset($_GET['id'])) {
+    // Handle confirmed delete
+    $message = 'Delete functionality would be implemented here for user ID: ' . $_GET['id'];
+    $messageType = 'info';
+}
+
 $users = $userManager->getAllUsers();
 ?>
 
@@ -85,10 +151,83 @@ $users = $userManager->getAllUsers();
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">User Management</h1>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <i class="bi bi-plus-lg"></i> Add New User
-                    </button>
+                    <form method="GET">
+                        <input type="hidden" name="show_add_form" value="1">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg"></i> Add New User
+                        </button>
+                    </form>
                 </div>
+                
+                <?php if (isset($message)): ?>
+                <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($message); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading">Confirm Deletion</h4>
+                    <p><?php echo htmlspecialchars($message); ?></p>
+                    <hr>
+                    <div class="d-flex">
+                        <a href="users.php" class="btn btn-secondary me-2">Cancel</a>
+                        <form method="GET" class="d-inline">
+                            <input type="hidden" name="delete_confirmed" value="1">
+                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                            <button type="submit" class="btn btn-danger">Yes, Delete User</button>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Add User Form -->
+                <?php if (isset($_GET['show_add_form']) && $_GET['show_add_form'] == '1'): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Add New User</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="add_user">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Role</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="customer">Customer</option>
+                                    <option value="tourist">Tourist</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="text" class="form-control" id="phone" name="phone">
+                            </div>
+                            <div class="mb-3">
+                                <label for="professional_details" class="form-label">Professional Details</label>
+                                <textarea class="form-control" id="professional_details" name="professional_details" rows="3"></textarea>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="users.php" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Add User</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Users Table -->
                 <div class="card">
@@ -123,14 +262,19 @@ $users = $userManager->getAllUsers();
                                         <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
                                         <td><?php echo date('M j, Y', strtotime($user['created_at'])); ?></td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-primary" 
-                                                    onclick="editUser(<?php echo $user['id']; ?>)">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    onclick="deleteUser(<?php echo $user['id']; ?>)">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="action" value="edit_user">
+                                                <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                            </form>
+                                            <form method="GET" class="d-inline">
+                                                <input type="hidden" name="confirm_delete" value="<?php echo $user['id']; ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -143,97 +287,6 @@ $users = $userManager->getAllUsers();
         </div>
     </div>
 
-    <!-- Add User Modal -->
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addUserForm">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="role" class="form-label">Role</label>
-                            <select class="form-select" id="role" name="role" required>
-                                <option value="customer">Customer</option>
-                                <option value="tourist">Tourist</option>
-                                <option value="manager">Manager</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="text" class="form-control" id="phone" name="phone">
-                        </div>
-                        <div class="mb-3">
-                            <label for="professional_details" class="form-label">Professional Details</label>
-                            <textarea class="form-control" id="professional_details" name="professional_details" rows="3"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addUser()">Add User</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function addUser() {
-            const form = document.getElementById('addUserForm');
-            const formData = new FormData(form);
-            
-            fetch('../api/auth.php?action=register', {
-                method: 'POST',
-                body: JSON.stringify({
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    password: formData.get('password'),
-                    role: formData.get('role'),
-                    phone: formData.get('phone'),
-                    professional_details: formData.get('professional_details')
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('User added successfully!');
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error adding user: ' + error.message);
-            });
-        }
-
-        function editUser(userId) {
-            alert('Edit user functionality would be implemented here. User ID: ' + userId);
-        }
-
-        function deleteUser(userId) {
-            if (confirm('Are you sure you want to delete this user?')) {
-                // In a real implementation, you would call an API endpoint to delete the user
-                alert('Delete user functionality would be implemented here. User ID: ' + userId);
-            }
-        }
-    </script>
 </body>
 </html>
 
