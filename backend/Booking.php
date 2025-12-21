@@ -30,6 +30,19 @@ class Booking {
     }
 
     /**
+     * Get all bookings
+     */
+    public function getAllBookings() {
+        $query = "SELECT * FROM {$this->table} ORDER BY created_at DESC";
+
+        try {
+            return $this->db->select($query);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Get booking by ID
      */
     public function getBookingById($id) {

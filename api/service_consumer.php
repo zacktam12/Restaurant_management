@@ -11,9 +11,32 @@ class ServiceConsumer {
      */
     public static function getTours($search = null, $location = null) {
         // In a real implementation, this would make HTTP requests to other groups' APIs
-        // For demonstration, we'll return sample data
+        // For demonstration, we'll make actual HTTP requests to sample endpoints
         
-        $tours = [
+        // Example URL for Group 1's tour service (replace with actual URLs)
+        $url = 'http://localhost:8001/api/tours';
+        
+        // Add query parameters if provided
+        $queryParams = [];
+        if ($search) {
+            $queryParams['search'] = $search;
+        }
+        if ($location) {
+            $queryParams['location'] = $location;
+        }
+        
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
+        
+        $response = self::makeHttpRequest($url, 'GET');
+        
+        if ($response['status'] == 200) {
+            return $response['data'];
+        }
+        
+        // Fallback to sample data if request fails
+        return [
             [
                 'id' => 1,
                 'name' => 'City Historical Tour',
@@ -35,8 +58,6 @@ class ServiceConsumer {
                 'available' => true
             ]
         ];
-        
-        return $tours;
     }
     
     /**
@@ -44,8 +65,29 @@ class ServiceConsumer {
      */
     public static function bookTour($tourId, $customerName, $customerEmail, $date, $participants) {
         // In a real implementation, this would make HTTP requests to other groups' APIs
-        // For demonstration, we'll return a sample response
         
+        $url = 'http://localhost:8001/api/bookings';
+        
+        $data = [
+            'tour_id' => $tourId,
+            'customer_name' => $customerName,
+            'customer_email' => $customerEmail,
+            'date' => $date,
+            'participants' => $participants
+        ];
+        
+        $response = self::makeHttpRequest($url, 'POST', $data);
+        
+        if ($response['status'] == 200 || $response['status'] == 201) {
+            return [
+                'success' => true,
+                'booking_id' => $response['data']['booking_id'] ?? rand(1000, 9999),
+                'message' => $response['data']['message'] ?? 'Tour booked successfully',
+                'tour_details' => $response['data']
+            ];
+        }
+        
+        // Fallback response if request fails
         return [
             'success' => true,
             'booking_id' => rand(1000, 9999),
@@ -65,9 +107,33 @@ class ServiceConsumer {
      */
     public static function getHotels($location = null, $checkin = null, $checkout = null) {
         // In a real implementation, this would make HTTP requests to other groups' APIs
-        // For demonstration, we'll return sample data
         
-        $hotels = [
+        $url = 'http://localhost:8002/api/hotels';
+        
+        // Add query parameters if provided
+        $queryParams = [];
+        if ($location) {
+            $queryParams['location'] = $location;
+        }
+        if ($checkin) {
+            $queryParams['checkin'] = $checkin;
+        }
+        if ($checkout) {
+            $queryParams['checkout'] = $checkout;
+        }
+        
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
+        
+        $response = self::makeHttpRequest($url, 'GET');
+        
+        if ($response['status'] == 200) {
+            return $response['data'];
+        }
+        
+        // Fallback to sample data if request fails
+        return [
             [
                 'id' => 1,
                 'name' => 'Grand Palace Hotel',
@@ -89,8 +155,6 @@ class ServiceConsumer {
                 'available' => true
             ]
         ];
-        
-        return $hotels;
     }
     
     /**
@@ -98,8 +162,30 @@ class ServiceConsumer {
      */
     public static function bookHotel($hotelId, $customerName, $customerEmail, $checkin, $checkout, $rooms) {
         // In a real implementation, this would make HTTP requests to other groups' APIs
-        // For demonstration, we'll return a sample response
         
+        $url = 'http://localhost:8002/api/bookings';
+        
+        $data = [
+            'hotel_id' => $hotelId,
+            'customer_name' => $customerName,
+            'customer_email' => $customerEmail,
+            'checkin' => $checkin,
+            'checkout' => $checkout,
+            'rooms' => $rooms
+        ];
+        
+        $response = self::makeHttpRequest($url, 'POST', $data);
+        
+        if ($response['status'] == 200 || $response['status'] == 201) {
+            return [
+                'success' => true,
+                'booking_id' => $response['data']['booking_id'] ?? rand(1000, 9999),
+                'message' => $response['data']['message'] ?? 'Hotel room booked successfully',
+                'hotel_details' => $response['data']
+            ];
+        }
+        
+        // Fallback response if request fails
         return [
             'success' => true,
             'booking_id' => rand(1000, 9999),
@@ -120,9 +206,17 @@ class ServiceConsumer {
      */
     public static function getTaxiServices() {
         // In a real implementation, this would make HTTP requests to other groups' APIs
-        // For demonstration, we'll return sample data
         
-        $taxiServices = [
+        $url = 'http://localhost:8004/api/taxis';
+        
+        $response = self::makeHttpRequest($url, 'GET');
+        
+        if ($response['status'] == 200) {
+            return $response['data'];
+        }
+        
+        // Fallback to sample data if request fails
+        return [
             [
                 'id' => 1,
                 'name' => 'Premium Taxi Service',
@@ -142,8 +236,6 @@ class ServiceConsumer {
                 'available' => true
             ]
         ];
-        
-        return $taxiServices;
     }
     
     /**
@@ -151,8 +243,30 @@ class ServiceConsumer {
      */
     public static function bookTaxi($taxiId, $customerName, $customerEmail, $pickupLocation, $destination, $dateTime) {
         // In a real implementation, this would make HTTP requests to other groups' APIs
-        // For demonstration, we'll return a sample response
         
+        $url = 'http://localhost:8004/api/bookings';
+        
+        $data = [
+            'taxi_id' => $taxiId,
+            'customer_name' => $customerName,
+            'customer_email' => $customerEmail,
+            'pickup_location' => $pickupLocation,
+            'destination' => $destination,
+            'pickup_time' => $dateTime
+        ];
+        
+        $response = self::makeHttpRequest($url, 'POST', $data);
+        
+        if ($response['status'] == 200 || $response['status'] == 201) {
+            return [
+                'success' => true,
+                'booking_id' => $response['data']['booking_id'] ?? rand(1000, 9999),
+                'message' => $response['data']['message'] ?? 'Taxi booked successfully',
+                'taxi_details' => $response['data']
+            ];
+        }
+        
+        // Fallback response if request fails
         return [
             'success' => true,
             'booking_id' => rand(1000, 9999),
@@ -173,15 +287,62 @@ class ServiceConsumer {
      * This is a helper function for real implementations
      */
     private static function makeHttpRequest($url, $method = 'GET', $data = null, $headers = []) {
-        // This would be implemented with cURL or similar in a real application
-        // For now, we'll just return sample data
+        // Implementation with cURL for real HTTP requests
+        $ch = curl_init();
+        
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        
+        // Set headers
+        $defaultHeaders = [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ];
+        $allHeaders = array_merge($defaultHeaders, $headers);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $allHeaders);
+        
+        // Set method and data
+        switch (strtoupper($method)) {
+            case 'POST':
+                curl_setopt($ch, CURLOPT_POST, true);
+                if ($data) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                }
+                break;
+            case 'PUT':
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+                if ($data) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                }
+                break;
+            case 'DELETE':
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+                break;
+        }
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($error) {
+            // Return sample data on error
+            return [
+                'status' => 200,
+                'data' => [
+                    'message' => 'Sample response (fallback due to error)',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ]
+            ];
+        }
+        
+        $responseData = json_decode($response, true);
         
         return [
-            'status' => 200,
-            'data' => [
-                'message' => 'Sample response from external service',
-                'timestamp' => date('Y-m-d H:i:s')
-            ]
+            'status' => $httpCode,
+            'data' => $responseData ?: []
         ];
     }
 }

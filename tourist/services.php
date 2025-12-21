@@ -15,11 +15,50 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] ||
 
 require_once '../backend/config.php';
 require_once '../backend/Booking.php';
+require_once '../api/service_consumer.php';
 
 $bookingManager = new Booking();
 
 // Handle booking submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'book_service') {
+    // Process booking through ServiceConsumer
+    $bookingResult = null;
+    
+    switch ($_POST['service_type']) {
+        case 'tour':
+            $bookingResult = ServiceConsumer::bookTour(
+                $_POST['service_id'],
+                $_SESSION['user']['name'],
+                $_SESSION['user']['email'],
+                $_POST['date'],
+                $_POST['guests']
+            );
+            break;
+            
+        case 'hotel':
+            $bookingResult = ServiceConsumer::bookHotel(
+                $_POST['service_id'],
+                $_SESSION['user']['name'],
+                $_SESSION['user']['email'],
+                $_POST['date'],
+                $_POST['checkout_date'] ?? '',
+                $_POST['guests']
+            );
+            break;
+            
+        case 'taxi':
+            $bookingResult = ServiceConsumer::bookTaxi(
+                $_POST['service_id'],
+                $_SESSION['user']['name'],
+                $_SESSION['user']['email'],
+                $_POST['pickup_location'] ?? '',
+                $_POST['dropoff_location'] ?? '',
+                $_POST['date'] . ' ' . $_POST['time']
+            );
+            break;
+    }
+    
+    // Save booking to our local database regardless of external service result
     $result = $bookingManager->createBooking(
         $_POST['service_type'],
         $_POST['service_id'],
@@ -39,44 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
-// Sample external services data (in a real app, this would come from a database)
-$externalServices = [
-    [
-        'id' => 1,
-        'type' => 'tour',
-        'name' => 'City Historical Tour',
-        'description' => '3-hour guided tour of historical landmarks',
-        'price' => 45.00,
-        'image' => '/city-tour-bus.jpg',
-        'rating' => 4.7,
-        'available' => true
-    ],
-    [
-        'id' => 2,
-        'type' => 'hotel',
-        'name' => 'Grand Palace Hotel',
-        'description' => '5-star luxury accommodation',
-        'price' => 250.00,
-        'image' => '/luxury-hotel-exterior.png',
-        'rating' => 4.9,
-        'available' => true
-    ],
-    [
-        'id' => 3,
-        'type' => 'taxi',
-        'name' => 'Premium Taxi Service',
-        'description' => '24/7 reliable transportation',
-        'price' => 25.00,
-        'image' => '/taxi-cab-service.jpg',
-        'rating' => 4.5,
-        'available' => true
-    ]
-];
-
-// Group services by type
-$tours = array_filter($externalServices, function($service) { return $service['type'] == 'tour'; });
-$hotels = array_filter($externalServices, function($service) { return $service['type'] == 'hotel'; });
-$taxis = array_filter($externalServices, function($service) { return $service['type'] == 'taxi'; });
+// Fetch real services from other groups
+$tours = ServiceConsumer::getTours();
+$hotels = ServiceConsumer::getHotels();
+$taxis = ServiceConsumer::getTaxiServices();
 ?>
 
 <!DOCTYPE html>

@@ -203,6 +203,10 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                                     onclick="editService(<?php echo $tour['id']; ?>)">
                                                 <i class="bi bi-pencil"></i> Edit
                                             </button>
+                                            <button class="btn btn-outline-<?php echo $tour['available'] ? 'success' : 'secondary'; ?> btn-sm" 
+                                                    onclick="toggleAvailability(<?php echo $tour['id']; ?>)">
+                                                <i class="bi bi-<?php echo $tour['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
+                                            </button>
                                             <button class="btn btn-outline-danger btn-sm" 
                                                     onclick="deleteService(<?php echo $tour['id']; ?>)">
                                                 <i class="bi bi-trash"></i> Delete
@@ -245,6 +249,10 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                             <button class="btn btn-outline-primary btn-sm" 
                                                     onclick="editService(<?php echo $hotel['id']; ?>)">
                                                 <i class="bi bi-pencil"></i> Edit
+                                            </button>
+                                            <button class="btn btn-outline-<?php echo $hotel['available'] ? 'success' : 'secondary'; ?> btn-sm" 
+                                                    onclick="toggleAvailability(<?php echo $hotel['id']; ?>)">
+                                                <i class="bi bi-<?php echo $hotel['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
                                             </button>
                                             <button class="btn btn-outline-danger btn-sm" 
                                                     onclick="deleteService(<?php echo $hotel['id']; ?>)">
@@ -289,6 +297,10 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                                     onclick="editService(<?php echo $taxi['id']; ?>)">
                                                 <i class="bi bi-pencil"></i> Edit
                                             </button>
+                                            <button class="btn btn-outline-<?php echo $taxi['available'] ? 'success' : 'secondary'; ?> btn-sm" 
+                                                    onclick="toggleAvailability(<?php echo $taxi['id']; ?>)">
+                                                <i class="bi bi-<?php echo $taxi['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
+                                            </button>
                                             <button class="btn btn-outline-danger btn-sm" 
                                                     onclick="deleteService(<?php echo $taxi['id']; ?>)">
                                                 <i class="bi bi-trash"></i> Delete
@@ -316,6 +328,7 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                 </div>
                 <form method="POST">
                     <div class="modal-body">
+                        <input type="hidden" name="action" value="add_service">
                         <div class="mb-3">
                             <label for="service_type" class="form-label">Service Type</label>
                             <select class="form-select" id="service_type" name="service_type" required>
@@ -393,3 +406,7 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
     </script>
 </body>
 </html>
+
+<?php
+$serviceManager->close();
+?>

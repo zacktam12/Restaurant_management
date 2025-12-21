@@ -122,6 +122,79 @@ function handleRestaurants($method, $id, $input, $restaurantManager, $menuManage
             }
             break;
             
+        case 'POST':
+            // Create new restaurant
+            if (!isset($input['name']) || !isset($input['description']) || !isset($input['cuisine']) || 
+                !isset($input['address']) || !isset($input['phone']) || !isset($input['price_range'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Name, description, cuisine, address, phone, and price_range are required'
+                ]);
+                exit();
+            }
+            
+            $result = $restaurantManager->createRestaurant(
+                $input['name'],
+                $input['description'],
+                $input['cuisine'],
+                $input['address'],
+                $input['phone'],
+                $input['price_range'],
+                isset($input['image']) ? $input['image'] : null,
+                isset($input['seating_capacity']) ? $input['seating_capacity'] : 0
+            );
+            
+            echo json_encode($result);
+            break;
+            
+        case 'PUT':
+            // Update restaurant
+            if (!$id) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Restaurant ID is required'
+                ]);
+                exit();
+            }
+            
+            if (!isset($input['name']) || !isset($input['description']) || !isset($input['cuisine']) || 
+                !isset($input['address']) || !isset($input['phone']) || !isset($input['price_range'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Name, description, cuisine, address, phone, and price_range are required'
+                ]);
+                exit();
+            }
+            
+            $result = $restaurantManager->updateRestaurant(
+                $id,
+                $input['name'],
+                $input['description'],
+                $input['cuisine'],
+                $input['address'],
+                $input['phone'],
+                $input['price_range'],
+                isset($input['image']) ? $input['image'] : null,
+                isset($input['seating_capacity']) ? $input['seating_capacity'] : 0
+            );
+            
+            echo json_encode($result);
+            break;
+            
+        case 'DELETE':
+            // Delete restaurant
+            if (!$id) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Restaurant ID is required'
+                ]);
+                exit();
+            }
+            
+            $result = $restaurantManager->deleteRestaurant($id);
+            echo json_encode($result);
+            break;
+            
         default:
             echo json_encode([
                 'success' => false,
@@ -173,6 +246,76 @@ function handleMenu($method, $id, $input, $menuManager) {
                     'data' => $menuItems
                 ]);
             }
+            break;
+            
+        case 'POST':
+            // Create new menu item
+            if (!isset($input['restaurant_id']) || !isset($input['name']) || !isset($input['description']) || 
+                !isset($input['price']) || !isset($input['category'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Restaurant ID, name, description, price, and category are required'
+                ]);
+                exit();
+            }
+            
+            $result = $menuManager->createMenuItem(
+                $input['restaurant_id'],
+                $input['name'],
+                $input['description'],
+                $input['price'],
+                $input['category'],
+                isset($input['image']) ? $input['image'] : null,
+                isset($input['available']) ? $input['available'] : 1
+            );
+            
+            echo json_encode($result);
+            break;
+            
+        case 'PUT':
+            // Update menu item
+            if (!$id) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Menu item ID is required'
+                ]);
+                exit();
+            }
+            
+            if (!isset($input['name']) || !isset($input['description']) || !isset($input['price']) || 
+                !isset($input['category'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Name, description, price, and category are required'
+                ]);
+                exit();
+            }
+            
+            $result = $menuManager->updateMenuItem(
+                $id,
+                $input['name'],
+                $input['description'],
+                $input['price'],
+                $input['category'],
+                isset($input['image']) ? $input['image'] : null,
+                isset($input['available']) ? $input['available'] : 1
+            );
+            
+            echo json_encode($result);
+            break;
+            
+        case 'DELETE':
+            // Delete menu item
+            if (!$id) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Menu item ID is required'
+                ]);
+                exit();
+            }
+            
+            $result = $menuManager->deleteMenuItem($id);
+            echo json_encode($result);
             break;
             
         default:
@@ -258,6 +401,52 @@ function handleReservations($method, $id, $input, $reservationManager) {
                     'data' => $reservations
                 ]);
             }
+            break;
+            
+        case 'PUT':
+            // Update reservation
+            if (!$id) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Reservation ID is required'
+                ]);
+                exit();
+            }
+            
+            // Check if updating status or details
+            if (isset($input['status'])) {
+                $result = $reservationManager->updateReservationStatus($id, $input['status']);
+            } else if (isset($input['date']) && isset($input['time']) && isset($input['guests'])) {
+                $result = $reservationManager->updateReservation(
+                    $id,
+                    $input['date'],
+                    $input['time'],
+                    $input['guests'],
+                    isset($input['special_requests']) ? $input['special_requests'] : null
+                );
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Either status or date/time/guests are required for update'
+                ]);
+                exit();
+            }
+            
+            echo json_encode($result);
+            break;
+            
+        case 'DELETE':
+            // Delete reservation
+            if (!$id) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Reservation ID is required'
+                ]);
+                exit();
+            }
+            
+            $result = $reservationManager->deleteReservation($id);
+            echo json_encode($result);
             break;
             
         default:
