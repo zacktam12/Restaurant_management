@@ -30,8 +30,8 @@ class ServiceConsumer {
         }
         
         $response = self::makeHttpRequest($url, 'GET');
-        
-        if ($response['status'] == 200 && is_array($response['data'])) {
+
+        if ($response['status'] == 200 && is_array($response['data']) && isset($response['data'][0]) && is_array($response['data'][0])) {
             return $response['data'];
         }
         
@@ -128,7 +128,7 @@ class ServiceConsumer {
         
         $response = self::makeHttpRequest($url, 'GET');
         
-        if ($response['status'] == 200 && is_array($response['data'])) {
+        if ($response['status'] == 200 && is_array($response['data']) && isset($response['data'][0]) && is_array($response['data'][0])) {
             return $response['data'];
         }
         
@@ -211,7 +211,7 @@ class ServiceConsumer {
         
         $response = self::makeHttpRequest($url, 'GET');
         
-        if ($response['status'] == 200 && is_array($response['data'])) {
+        if ($response['status'] == 200 && is_array($response['data']) && isset($response['data'][0]) && is_array($response['data'][0])) {
             return $response['data'];
         }
         
@@ -328,13 +328,9 @@ class ServiceConsumer {
         curl_close($ch);
         
         if ($error) {
-            // Return sample data on error
             return [
-                'status' => 200,
-                'data' => [
-                    'message' => 'Sample response (fallback due to error)',
-                    'timestamp' => date('Y-m-d H:i:s')
-                ]
+                'status' => 500,
+                'data' => []
             ];
         }
         
@@ -352,7 +348,8 @@ class ServiceConsumer {
     }
 }
 
-if (php_sapi_name() !== 'cli' && isset($_SERVER['REQUEST_METHOD'])) {
+if (php_sapi_name() !== 'cli' && isset($_SERVER['REQUEST_METHOD']) &&
+    isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)) {
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
@@ -435,9 +432,11 @@ if (php_sapi_name() !== 'cli' && isset($_SERVER['REQUEST_METHOD'])) {
 
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Invalid endpoint']);
+        exit();
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+        exit();
     }
 }
 ?>

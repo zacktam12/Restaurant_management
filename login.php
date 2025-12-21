@@ -108,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <option value="">Select your role</option>
                                     <option value="customer">Customer</option>
                                     <option value="tourist">Tourist</option>
+                                    <option value="tour_guide">Tour Guide</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
                                 </select>

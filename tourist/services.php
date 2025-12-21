@@ -87,10 +87,29 @@ $tours = ServiceConsumer::getTours();
 $hotels = ServiceConsumer::getHotels();
 $taxis = ServiceConsumer::getTaxiServices();
 
-// Ensure we have arrays
-if (!is_array($tours)) $tours = [];
-if (!is_array($hotels)) $hotels = [];
-if (!is_array($taxis)) $taxis = [];
+// Ensure we have arrays of items
+if (!is_array($tours)) {
+    $tours = [];
+}
+if (!is_array($hotels)) {
+    $hotels = [];
+}
+if (!is_array($taxis)) {
+    $taxis = [];
+}
+
+$tours = array_values(array_filter($tours, function ($item) {
+    return is_array($item) && isset($item['name']) && isset($item['description']) && isset($item['price']);
+}));
+
+$hotels = array_values(array_filter($hotels, function ($item) {
+    return is_array($item) && isset($item['name']) && isset($item['description']) && isset($item['price']);
+}));
+
+$taxis = array_values(array_filter($taxis, function ($item) {
+    return is_array($item) && isset($item['name']) && isset($item['description']) && isset($item['price']);
+}));
+
 ?>
 
 <!DOCTYPE html>
