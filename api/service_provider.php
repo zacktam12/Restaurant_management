@@ -19,6 +19,7 @@ require_once '../backend/config.php';
 require_once '../backend/Restaurant.php';
 require_once '../backend/Menu.php';
 require_once '../backend/Reservation.php';
+require_once '../backend/ApiKey.php';
 
 try {
     // Get request data
@@ -40,6 +41,55 @@ try {
     $restaurantManager = new Restaurant();
     $menuManager = new Menu();
     $reservationManager = new Reservation();
+    $apiKeyManager = new ApiKey();
+    
+    // Check API key authentication for non-GET requests
+    if ($method !== 'GET') {
+        $authHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
+        
+        // Handle both "Bearer token" and "token" formats
+        if (strpos($authHeader, 'Bearer ') === 0) {
+            $apiKey = substr($authHeader, 7);
+        } else {
+            $apiKey = $authHeader;
+        }
+        
+        // If no API key provided, check for it in the request body or query params
+        if (empty($apiKey)) {
+            $apiKey = isset($input['api_key']) ? $input['api_key'] : (isset($_GET['api_key']) ? $_GET['api_key'] : '');
+        }
+        
+        // Validate API key
+        if (empty($apiKey)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'API key is required for this operation'
+            ]);
+            exit();
+        }
+        
+        $apiKeyRecord = $apiKeyManager->validateApiKey($apiKey);
+        if (!$apiKeyRecord) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid or inactive API key'
+            ]);
+            exit();
+        }
+        
+        // Log API key usage
+        $apiKeyManager->logApiKeyUsage($apiKey);
+        
+        // Check permissions
+        if (($method === 'POST' || $method === 'PUT' || $method === 'DELETE') && 
+            $apiKeyRecord['permissions'] === 'read') {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Insufficient permissions for this operation'
+            ]);
+            exit();
+        }
+    }
     
     switch ($endpoint) {
         case 'restaurants':
@@ -70,6 +120,7 @@ try {
     $restaurantManager->close();
     $menuManager->close();
     $reservationManager->close();
+    $apiKeyManager->close();
     
 } catch (Exception $e) {
     echo json_encode([
