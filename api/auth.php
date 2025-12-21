@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 require_once '../backend/config.php';
 require_once '../backend/User.php';
+require_once '../backend/ApiResponse.php';
 
 $userManager = new User();
 
@@ -32,12 +33,12 @@ try {
     
     switch ($action) {
         case 'login':
-            if (!isset($input['email']) || !isset($input['password']) || !isset($input['role'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Email, password, and role are required'
+            // Validate required fields
+            if (!isset($input['email']) || !isset($input['password'])) {
+                ApiResponse::validationError([
+                    'email' => 'Email is required',
+                    'password' => 'Password is required'
                 ]);
-                exit();
             }
             
             $result = $userManager->login($input['email'], $input['password']);
@@ -48,26 +49,34 @@ try {
                 $_SESSION['user'] = $result['user'];
                 $_SESSION['logged_in'] = true;
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful',
-                    'user' => $result['user']
-                ]);
+                ApiResponse::success($result['user'], 'Login successful');
             } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => $result['message']
-                ]);
+                ApiResponse::unauthorized($result['message']);
             }
             break;
             
         case 'register':
-            if (!isset($input['email']) || !isset($input['password']) || !isset($input['name'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Email, password, and name are required'
-                ]);
-                exit();
+            // Validate required fields
+            $required = ['email', 'password', 'name'];
+            $errors = [];
+            foreach ($required as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    $errors[$field] = ucfirst($field) . ' is required';
+                }
+            }
+            
+            // Validate email format
+            if (isset($input['email']) && !filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+                $errors['email'] = 'Invalid email format';
+            }
+            
+            // Validate password length
+            if (isset($input['password']) && strlen($input['password']) < 6) {
+                $errors['password'] = 'Password must be at least 6 characters';
+            }
+            
+            if (!empty($errors)) {
+                ApiResponse::validationError($errors);
             }
             
             $role = isset($input['role']) ? $input['role'] : 'customer';
@@ -83,32 +92,35 @@ try {
                 $professionalDetails
             );
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::created(null, $result['message']);
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'logout':
             session_start();
             session_destroy();
+            ApiResponse::success(null, 'Logged out successfully');
+            break;
             
-            echo json_encode([
-                'success' => true,
-                'message' => 'Logged out successfully'
-            ]);
+        case 'me':
+            session_start();
+            if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
+                ApiResponse::success($_SESSION['user'], 'User data retrieved');
+            } else {
+                ApiResponse::unauthorized('Not logged in');
+            }
             break;
             
         default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Invalid action'
-            ]);
+            ApiResponse::notFound('Invalid action');
             break;
     }
     
 } catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ]);
+    ApiResponse::serverError('Server error: ' . $e->getMessage());
 }
 
 $userManager->close();
