@@ -351,4 +351,93 @@ class ServiceConsumer {
         ];
     }
 }
+
+if (php_sapi_name() !== 'cli' && isset($_SERVER['REQUEST_METHOD'])) {
+    header('Content-Type: application/json');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
+
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(200);
+        exit();
+    }
+
+    $method = $_SERVER['REQUEST_METHOD'];
+    $pathInfo = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '';
+    $pathParts = array_values(array_filter(explode('/', trim($pathInfo, '/'))));
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!$input) {
+        $input = $_POST;
+    }
+
+    try {
+        if ($method === 'GET' && isset($pathParts[0]) && $pathParts[0] === 'tours') {
+            $data = ServiceConsumer::getTours($_GET['search'] ?? null, $_GET['location'] ?? null);
+            echo json_encode(['success' => true, 'data' => $data]);
+            exit();
+        }
+
+        if ($method === 'GET' && isset($pathParts[0]) && $pathParts[0] === 'hotels') {
+            $data = ServiceConsumer::getHotels($_GET['location'] ?? null, $_GET['checkin'] ?? null, $_GET['checkout'] ?? null);
+            echo json_encode(['success' => true, 'data' => $data]);
+            exit();
+        }
+
+        if ($method === 'GET' && isset($pathParts[0]) && $pathParts[0] === 'taxis') {
+            $data = ServiceConsumer::getTaxiServices();
+            echo json_encode(['success' => true, 'data' => $data]);
+            exit();
+        }
+
+        if ($method === 'POST' && isset($pathParts[0]) && $pathParts[0] === 'bookings' && isset($pathParts[1])) {
+            $type = $pathParts[1];
+
+            if ($type === 'tour') {
+                $result = ServiceConsumer::bookTour(
+                    $input['tour_id'] ?? null,
+                    $input['customer_name'] ?? null,
+                    $input['customer_email'] ?? null,
+                    $input['date'] ?? null,
+                    $input['participants'] ?? null
+                );
+                echo json_encode($result);
+                exit();
+            }
+
+            if ($type === 'hotel') {
+                $result = ServiceConsumer::bookHotel(
+                    $input['hotel_id'] ?? null,
+                    $input['customer_name'] ?? null,
+                    $input['customer_email'] ?? null,
+                    $input['checkin'] ?? null,
+                    $input['checkout'] ?? null,
+                    $input['rooms'] ?? null
+                );
+                echo json_encode($result);
+                exit();
+            }
+
+            if ($type === 'taxi') {
+                $result = ServiceConsumer::bookTaxi(
+                    $input['taxi_id'] ?? null,
+                    $input['customer_name'] ?? null,
+                    $input['customer_email'] ?? null,
+                    $input['pickup_location'] ?? null,
+                    $input['destination'] ?? null,
+                    $input['pickup_time'] ?? null
+                );
+                echo json_encode($result);
+                exit();
+            }
+        }
+
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Invalid endpoint']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    }
+}
 ?>

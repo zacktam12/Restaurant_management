@@ -73,7 +73,7 @@ class Restaurant {
     public function updateRestaurant($id, $name, $description, $cuisine, $address, $phone, $priceRange, $image = null, $seatingCapacity = 0) {
         $query = "UPDATE {$this->table} SET name = ?, description = ?, cuisine = ?, address = ?, phone = ?, price_range = ?, image = ?, seating_capacity = ?, updated_at = NOW() WHERE id = ?";
         $params = [$name, $description, $cuisine, $address, $phone, $priceRange, $image, $seatingCapacity, $id];
-        $paramTypes = "ssssssssi";
+        $paramTypes = "sssssssii";
 
         try {
             $result = $this->db->execute($query, $params, $paramTypes);

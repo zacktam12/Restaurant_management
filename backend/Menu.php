@@ -90,7 +90,7 @@ class Menu {
     public function updateMenuItem($id, $name, $description, $price, $category, $image = null, $available = 1) {
         $query = "UPDATE {$this->table} SET name = ?, description = ?, price = ?, category = ?, image = ?, available = ?, updated_at = NOW() WHERE id = ?";
         $params = [$name, $description, $price, $category, $image, $available, $id];
-        $paramTypes = "ssdsisi";
+        $paramTypes = "ssdssii";
 
         try {
             $result = $this->db->execute($query, $params, $paramTypes);

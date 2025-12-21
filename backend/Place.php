@@ -49,7 +49,7 @@ class Place {
     public function createPlace($name, $description, $country, $city, $image = null, $rating = 0.0, $category = 'historical') {
         $query = "INSERT INTO {$this->table} (name, description, country, city, image, rating, category) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $params = [$name, $description, $country, $city, $image, $rating, $category];
-        $paramTypes = "sssssd";
+        $paramTypes = "sssssds";
 
         try {
             $result = $this->db->execute($query, $params, $paramTypes);
@@ -73,7 +73,7 @@ class Place {
     public function updatePlace($id, $name, $description, $country, $city, $image = null, $rating = 0.0, $category = 'historical') {
         $query = "UPDATE {$this->table} SET name = ?, description = ?, country = ?, city = ?, image = ?, rating = ?, category = ?, updated_at = NOW() WHERE id = ?";
         $params = [$name, $description, $country, $city, $image, $rating, $category, $id];
-        $paramTypes = "sssssd";
+        $paramTypes = "sssssdsi";
 
         try {
             $result = $this->db->execute($query, $params, $paramTypes);

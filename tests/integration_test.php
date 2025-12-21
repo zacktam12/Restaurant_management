@@ -61,12 +61,16 @@ $reservationData = [
     'special_requests' => 'Window seat preferred'
 ];
 
-$response = makeRequest('POST', $baseUrl . '/service_provider.php/reservations', $reservationData);
-if ($response['success']) {
-    echo "✓ PASS: Reservation created successfully\n";
-    echo "  Reservation ID: " . $response['data']['reservation_id'] . "\n";
+if ($apiKey === 'YOUR_API_KEY_HERE' || $apiKey === '') {
+    echo "↷ SKIP: API key not configured. Set \$apiKey to run write-operation tests.\n";
 } else {
-    echo "✗ FAIL: " . $response['message'] . "\n";
+    $response = makeRequest('POST', $baseUrl . '/service_provider.php/reservations', $reservationData, $apiKey);
+    if ($response['success']) {
+        echo "✓ PASS: Reservation created successfully\n";
+        echo "  Reservation ID: " . ($response['reservation_id'] ?? ($response['data']['reservation_id'] ?? '')) . "\n";
+    } else {
+        echo "✗ FAIL: " . $response['message'] . "\n";
+    }
 }
 
 // Test 6: Get menu items
@@ -97,11 +101,15 @@ $tourBookingData = [
     'participants' => 4
 ];
 
-$response = makeRequest('POST', $baseUrl . '/service_consumer.php/bookings/tour', $tourBookingData);
-if ($response['success']) {
-    echo "✓ PASS: Tour booked successfully\n";
+if ($apiKey === 'YOUR_API_KEY_HERE' || $apiKey === '') {
+    echo "↷ SKIP: API key not configured. Set \$apiKey to run write-operation tests.\n";
 } else {
-    echo "✗ FAIL: " . $response['message'] . "\n";
+    $response = makeRequest('POST', $baseUrl . '/service_consumer.php/bookings/tour', $tourBookingData, $apiKey);
+    if ($response['success']) {
+        echo "✓ PASS: Tour booked successfully\n";
+    } else {
+        echo "✗ FAIL: " . $response['message'] . "\n";
+    }
 }
 
 // Test 9: Get hotels
@@ -127,20 +135,26 @@ echo "\n=== Integration Tests Completed ===\n";
 /**
  * Make HTTP request helper function
  */
-function makeRequest($method, $url, $data = null) {
+function makeRequest($method, $url, $data = null, $apiKey = null) {
     $ch = curl_init();
-    
+
+    $headers = [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ];
+
+    if ($apiKey !== null && $apiKey !== '' && $apiKey !== 'YOUR_API_KEY_HERE') {
+        $headers[] = 'Authorization: Bearer ' . $apiKey;
+    }
+
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT => 30,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Accept: application/json'
-        ]
+        CURLOPT_HTTPHEADER => $headers
     ]);
-    
+
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST, true);
         if ($data) {
@@ -166,11 +180,18 @@ function makeRequest($method, $url, $data = null) {
     }
     
     $responseData = json_decode($response, true);
-    
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return ['success' => true, 'data' => $responseData];
-    } else {
-        return ['success' => false, 'message' => 'HTTP ' . $httpCode . ': ' . ($responseData['message'] ?? 'Unknown error')];
+
+    if (!is_array($responseData)) {
+        $responseData = [];
     }
+
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $responseData;
+    }
+
+    return [
+        'success' => false,
+        'message' => 'HTTP ' . $httpCode . ': ' . ($responseData['message'] ?? 'Unknown error')
+    ];
 }
 ?>

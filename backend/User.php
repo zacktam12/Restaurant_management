@@ -51,7 +51,7 @@ class User {
     /**
      * Authenticate user login
      */
-    public function login($email, $password) {
+    public function login($email, $password, $role = null) {
         $user = $this->getUserByEmail($email);
         
         if (!$user) {
@@ -60,6 +60,9 @@ class User {
 
         // Verify password
         if (password_verify($password, $user['password'])) {
+            if ($role !== null && $role !== '' && isset($user['role']) && $user['role'] !== $role) {
+                return ['success' => false, 'message' => 'Selected role does not match your account role'];
+            }
             // Remove password from user data before returning
             unset($user['password']);
             return [
