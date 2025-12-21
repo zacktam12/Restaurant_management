@@ -19,6 +19,10 @@ require_once '../api/service_consumer.php';
 
 $bookingManager = new Booking();
 
+// Initialize message variables
+$message = '';
+$messageType = 'info';
+
 // Handle booking submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'book_service') {
     // Process booking through ServiceConsumer
@@ -82,6 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 $tours = ServiceConsumer::getTours();
 $hotels = ServiceConsumer::getHotels();
 $taxis = ServiceConsumer::getTaxiServices();
+
+// Ensure we have arrays
+if (!is_array($tours)) $tours = [];
+if (!is_array($hotels)) $hotels = [];
+if (!is_array($taxis)) $taxis = [];
 ?>
 
 <!DOCTYPE html>
@@ -144,7 +153,7 @@ $taxis = ServiceConsumer::getTaxiServices();
 
         <?php if (isset($message)): ?>
         <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-            <?php echo htmlspecialchars($message); ?>
+            <?php echo $message; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>

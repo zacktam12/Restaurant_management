@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Please fill in all required fields.';
     } else {
         // Attempt registration
-        $result = $userManager->register($name, $email, $password, $role, $phone, $professional_details);
+        $result = $userManager->register($email, $password, $name, $role, $phone, $professional_details);
         
         if ($result['success']) {
             $success = 'Registration successful! You can now login.';

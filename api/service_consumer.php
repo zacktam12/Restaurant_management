@@ -31,11 +31,11 @@ class ServiceConsumer {
         
         $response = self::makeHttpRequest($url, 'GET');
         
-        if ($response['status'] == 200) {
+        if ($response['status'] == 200 && is_array($response['data'])) {
             return $response['data'];
         }
         
-        // Fallback to sample data if request fails
+        // Fallback to sample data if request fails or returns invalid data
         return [
             [
                 'id' => 1,
@@ -128,17 +128,17 @@ class ServiceConsumer {
         
         $response = self::makeHttpRequest($url, 'GET');
         
-        if ($response['status'] == 200) {
+        if ($response['status'] == 200 && is_array($response['data'])) {
             return $response['data'];
         }
         
-        // Fallback to sample data if request fails
+        // Fallback to sample data if request fails or returns invalid data
         return [
             [
                 'id' => 1,
                 'name' => 'Grand Palace Hotel',
                 'description' => '5-star luxury accommodation',
-                'price_per_night' => 250.00,
+                'price' => 250.00,
                 'rating' => 4.9,
                 'amenities' => ['WiFi', 'Pool', 'Spa', 'Restaurant'],
                 'location' => 'City Center',
@@ -148,7 +148,7 @@ class ServiceConsumer {
                 'id' => 2,
                 'name' => 'Cozy Inn',
                 'description' => 'Budget-friendly comfortable stay',
-                'price_per_night' => 80.00,
+                'price' => 80.00,
                 'rating' => 4.2,
                 'amenities' => ['WiFi', 'Parking', 'Breakfast'],
                 'location' => 'Suburb',
@@ -211,17 +211,17 @@ class ServiceConsumer {
         
         $response = self::makeHttpRequest($url, 'GET');
         
-        if ($response['status'] == 200) {
+        if ($response['status'] == 200 && is_array($response['data'])) {
             return $response['data'];
         }
         
-        // Fallback to sample data if request fails
+        // Fallback to sample data if request fails or returns invalid data
         return [
             [
                 'id' => 1,
                 'name' => 'Premium Taxi Service',
                 'description' => '24/7 reliable transportation',
-                'price_per_km' => 2.50,
+                'price' => 2.50,
                 'rating' => 4.5,
                 'vehicle_types' => ['Sedan', 'SUV', 'Van'],
                 'available' => true
@@ -230,7 +230,7 @@ class ServiceConsumer {
                 'id' => 2,
                 'name' => 'Economy Rides',
                 'description' => 'Affordable transportation option',
-                'price_per_km' => 1.50,
+                'price' => 1.50,
                 'rating' => 4.0,
                 'vehicle_types' => ['Sedan', 'Hatchback'],
                 'available' => true
@@ -340,9 +340,14 @@ class ServiceConsumer {
         
         $responseData = json_decode($response, true);
         
+        // Ensure we always return an array for data
+        if (!is_array($responseData)) {
+            $responseData = [];
+        }
+        
         return [
             'status' => $httpCode,
-            'data' => $responseData ?: []
+            'data' => $responseData
         ];
     }
 }

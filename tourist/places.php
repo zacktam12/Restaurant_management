@@ -69,10 +69,23 @@ if ($action == 'view_details' && isset($_GET['place_id'])) {
                         </button>
                      </form>';
     }
+    
+    // Redirect to clean URL to prevent parameter carryover
+    $cleanUrl = strtok($_SERVER['REQUEST_URI'], '?');
+    header("Location: $cleanUrl");
+    exit();
 } else if ($action == 'book_tour' && isset($_GET['place_name'])) {
     $message = 'To book a tour for "' . htmlspecialchars($_GET['place_name']) . '", please visit the Services page.';
+    // Redirect to clean URL to prevent parameter carryover
+    $cleanUrl = strtok($_SERVER['REQUEST_URI'], '?');
+    header("Location: $cleanUrl");
+    exit();
 } else if ($action == 'find_restaurants' && isset($_GET['city'])) {
     $message = 'To find restaurants in "' . htmlspecialchars($_GET['city']) . '", please visit the Restaurants page.';
+    // Redirect to clean URL to prevent parameter carryover
+    $cleanUrl = strtok($_SERVER['REQUEST_URI'], '?');
+    header("Location: $cleanUrl");
+    exit();
 }
 
 $category = isset($_GET['category']) ? $_GET['category'] : '';
@@ -184,7 +197,7 @@ foreach ($allPlaces as $place) {
 
         <?php if (!empty($message)): ?>
         <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <?php echo htmlspecialchars($message); ?>
+            <?php echo $message; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
