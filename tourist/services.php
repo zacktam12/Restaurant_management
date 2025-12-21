@@ -118,46 +118,42 @@ $taxis = array_values(array_filter($taxis, function ($item) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Other Services - Restaurant Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <i class="bi bi-compass"></i> Tourist Portal
+                Tourist Portal
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+            <div class="navbar-collapse">
+                <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="index.php">
-                            <i class="bi bi-shop"></i> Restaurants
+                            Restaurants
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="bookings.php">
-                            <i class="bi bi-calendar-check"></i> My Bookings
+                            My Bookings
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="places.php">
-                            <i class="bi bi-map"></i> Places to Visit
+                            Places to Visit
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="services.php">
-                            <i class="bi bi-gear"></i> Other Services
+                            Other Services
                         </a>
                     </li>
                 </ul>
                 <div class="navbar-nav">
-                    <span class="navbar-text me-3">
+                    <span class="navbar-text">
                         Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
-                        <span class="badge bg-light text-dark"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
+                        <span class="badge"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
                     </span>
                     <a class="btn btn-outline-light" href="../logout.php">Logout</a>
                 </div>
@@ -173,166 +169,160 @@ $taxis = array_values(array_filter($taxis, function ($item) {
         <?php if (isset($message)): ?>
         <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
             <?php echo $message; ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close"></button>
         </div>
         <?php endif; ?>
 
         <!-- Services Tabs -->
-        <ul class="nav nav-tabs mb-4" id="serviceTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tours-tab" data-bs-toggle="tab" data-bs-target="#tours" type="button" role="tab">
-                    <i class="bi bi-compass"></i> Tours
+        <div class="tabs-container mb-4">
+            <div class="tabs-header">
+                <button class="tab-button active" data-tab="tours">
+                    Tours
                 </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="hotels-tab" data-bs-toggle="tab" data-bs-target="#hotels" type="button" role="tab">
-                    <i class="bi bi-building"></i> Hotels
+                <button class="tab-button" data-tab="hotels">
+                    Hotels
                 </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="taxis-tab" data-bs-toggle="tab" data-bs-target="#taxis" type="button" role="tab">
-                    <i class="bi bi-car-front"></i> Taxis
+                <button class="tab-button" data-tab="taxis">
+                    Taxis
                 </button>
-            </li>
-        </ul>
-
-        <div class="tab-content" id="serviceTabContent">
-            <!-- Tours Tab -->
-            <div class="tab-pane fade show active" id="tours" role="tabpanel">
-                <div class="row">
-                    <?php if (empty($tours)): ?>
-                    <div class="col-12">
-                        <div class="text-center py-5">
-                            <i class="bi bi-compass fs-1 text-muted"></i>
-                            <h3 class="mt-3">No tours available</h3>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <?php foreach ($tours as $tour): ?>
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title"><?php echo htmlspecialchars($tour['name']); ?></h5>
-                                <p class="card-text"><?php echo htmlspecialchars($tour['description']); ?></p>
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-currency-dollar"></i> $<?php echo number_format($tour['price'], 2); ?><br>
-                                        <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($tour['rating']); ?>/5.0
-                                    </small>
-                                </p>
-                            </div>
-                            <div class="card-footer">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="book_service">
-                                    <input type="hidden" name="service_type" value="tour">
-                                    <input type="hidden" name="service_id" value="<?php echo $tour['id']; ?>">
-                                    <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
-                                    <input type="hidden" name="time" value="10:00">
-                                    <input type="hidden" name="guests" value="2">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-calendar-plus"></i> Book Tour
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
             </div>
 
-            <!-- Hotels Tab -->
-            <div class="tab-pane fade" id="hotels" role="tabpanel">
-                <div class="row">
-                    <?php if (empty($hotels)): ?>
-                    <div class="col-12">
-                        <div class="text-center py-5">
-                            <i class="bi bi-building fs-1 text-muted"></i>
-                            <h3 class="mt-3">No hotels available</h3>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <?php foreach ($hotels as $hotel): ?>
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title"><?php echo htmlspecialchars($hotel['name']); ?></h5>
-                                <p class="card-text"><?php echo htmlspecialchars($hotel['description']); ?></p>
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-currency-dollar"></i> $<?php echo number_format($hotel['price'], 2); ?>/night<br>
-                                        <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($hotel['rating']); ?>/5.0
-                                    </small>
-                                </p>
-                            </div>
-                            <div class="card-footer">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="book_service">
-                                    <input type="hidden" name="service_type" value="hotel">
-                                    <input type="hidden" name="service_id" value="<?php echo $hotel['id']; ?>">
-                                    <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
-                                    <input type="hidden" name="checkout_date" value="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
-                                    <input type="hidden" name="guests" value="2">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-calendar-plus"></i> Book Hotel
-                                    </button>
-                                </form>
+            <div class="tab-content">
+                <!-- Tours Tab -->
+                <div class="tab-pane active" id="tours">
+                    <div class="row">
+                        <?php if (empty($tours)): ?>
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <h3 class="mt-3">No tours available</h3>
                             </div>
                         </div>
+                        <?php else: ?>
+                        <?php foreach ($tours as $tour): ?>
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><?php echo htmlspecialchars($tour['name']); ?></h5>
+                                    <p class="card-text"><?php echo htmlspecialchars($tour['description']); ?></p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            $<?php echo number_format($tour['price'], 2); ?><br>
+                                            <?php echo htmlspecialchars($tour['rating']); ?>/5.0
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer">
+                                    <form method="POST">
+                                        <input type="hidden" name="action" value="book_service">
+                                        <input type="hidden" name="service_type" value="tour">
+                                        <input type="hidden" name="service_id" value="<?php echo $tour['id']; ?>">
+                                        <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                                        <input type="hidden" name="time" value="10:00">
+                                        <input type="hidden" name="guests" value="2">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            Book Tour
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
                 </div>
-            </div>
 
-            <!-- Taxis Tab -->
-            <div class="tab-pane fade" id="taxis" role="tabpanel">
-                <div class="row">
-                    <?php if (empty($taxis)): ?>
-                    <div class="col-12">
-                        <div class="text-center py-5">
-                            <i class="bi bi-car-front fs-1 text-muted"></i>
-                            <h3 class="mt-3">No taxi services available</h3>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <?php foreach ($taxis as $taxi): ?>
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title"><?php echo htmlspecialchars($taxi['name']); ?></h5>
-                                <p class="card-text"><?php echo htmlspecialchars($taxi['description']); ?></p>
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-currency-dollar"></i> $<?php echo number_format($taxi['price'], 2); ?><br>
-                                        <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($taxi['rating']); ?>/5.0
-                                    </small>
-                                </p>
-                            </div>
-                            <div class="card-footer">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="book_service">
-                                    <input type="hidden" name="service_type" value="taxi">
-                                    <input type="hidden" name="service_id" value="<?php echo $taxi['id']; ?>">
-                                    <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
-                                    <input type="hidden" name="time" value="10:00">
-                                    <input type="hidden" name="pickup_location" value="Airport">
-                                    <input type="hidden" name="dropoff_location" value="City Center">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-calendar-plus"></i> Book Taxi
-                                    </button>
-                                </form>
+                <!-- Hotels Tab -->
+                <div class="tab-pane" id="hotels">
+                    <div class="row">
+                        <?php if (empty($hotels)): ?>
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <h3 class="mt-3">No hotels available</h3>
                             </div>
                         </div>
+                        <?php else: ?>
+                        <?php foreach ($hotels as $hotel): ?>
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><?php echo htmlspecialchars($hotel['name']); ?></h5>
+                                    <p class="card-text"><?php echo htmlspecialchars($hotel['description']); ?></p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            $<?php echo number_format($hotel['price'], 2); ?>/night<br>
+                                            <?php echo htmlspecialchars($hotel['rating']); ?>/5.0
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer">
+                                    <form method="POST">
+                                        <input type="hidden" name="action" value="book_service">
+                                        <input type="hidden" name="service_type" value="hotel">
+                                        <input type="hidden" name="service_id" value="<?php echo $hotel['id']; ?>">
+                                        <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                                        <input type="hidden" name="checkout_date" value="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
+                                        <input type="hidden" name="guests" value="2">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            Book Hotel
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
+                </div>
+
+                <!-- Taxis Tab -->
+                <div class="tab-pane" id="taxis">
+                    <div class="row">
+                        <?php if (empty($taxis)): ?>
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <h3 class="mt-3">No taxi services available</h3>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <?php foreach ($taxis as $taxi): ?>
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><?php echo htmlspecialchars($taxi['name']); ?></h5>
+                                    <p class="card-text"><?php echo htmlspecialchars($taxi['description']); ?></p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            $<?php echo number_format($taxi['price'], 2); ?><br>
+                                            <?php echo htmlspecialchars($taxi['rating']); ?>/5.0
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer">
+                                    <form method="POST">
+                                        <input type="hidden" name="action" value="book_service">
+                                        <input type="hidden" name="service_type" value="taxi">
+                                        <input type="hidden" name="service_id" value="<?php echo $taxi['id']; ?>">
+                                        <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                                        <input type="hidden" name="time" value="10:00">
+                                        <input type="hidden" name="pickup_location" value="Airport">
+                                        <input type="hidden" name="dropoff_location" value="City Center">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            Book Taxi
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/app.js"></script>
 </body>
 </html>
 
