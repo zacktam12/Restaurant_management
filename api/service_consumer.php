@@ -350,6 +350,8 @@ class ServiceConsumer {
 
 if (php_sapi_name() !== 'cli' && isset($_SERVER['REQUEST_METHOD']) &&
     isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)) {
+    require_once '../backend/ApiResponse.php';
+    
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
@@ -372,71 +374,112 @@ if (php_sapi_name() !== 'cli' && isset($_SERVER['REQUEST_METHOD']) &&
     try {
         if ($method === 'GET' && isset($pathParts[0]) && $pathParts[0] === 'tours') {
             $data = ServiceConsumer::getTours($_GET['search'] ?? null, $_GET['location'] ?? null);
-            echo json_encode(['success' => true, 'data' => $data]);
-            exit();
+            ApiResponse::success($data, 'Tours retrieved successfully');
         }
 
         if ($method === 'GET' && isset($pathParts[0]) && $pathParts[0] === 'hotels') {
             $data = ServiceConsumer::getHotels($_GET['location'] ?? null, $_GET['checkin'] ?? null, $_GET['checkout'] ?? null);
-            echo json_encode(['success' => true, 'data' => $data]);
-            exit();
+            ApiResponse::success($data, 'Hotels retrieved successfully');
         }
 
         if ($method === 'GET' && isset($pathParts[0]) && $pathParts[0] === 'taxis') {
             $data = ServiceConsumer::getTaxiServices();
-            echo json_encode(['success' => true, 'data' => $data]);
-            exit();
+            ApiResponse::success($data, 'Taxi services retrieved successfully');
         }
 
         if ($method === 'POST' && isset($pathParts[0]) && $pathParts[0] === 'bookings' && isset($pathParts[1])) {
             $type = $pathParts[1];
 
             if ($type === 'tour') {
+                // Validate required fields
+                $required = ['tour_id', 'customer_name', 'customer_email', 'date', 'participants'];
+                $errors = [];
+                foreach ($required as $field) {
+                    if (!isset($input[$field]) || empty($input[$field])) {
+                        $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required';
+                    }
+                }
+                if (!empty($errors)) {
+                    ApiResponse::validationError($errors);
+                }
+                
                 $result = ServiceConsumer::bookTour(
-                    $input['tour_id'] ?? null,
-                    $input['customer_name'] ?? null,
-                    $input['customer_email'] ?? null,
-                    $input['date'] ?? null,
-                    $input['participants'] ?? null
+                    $input['tour_id'],
+                    $input['customer_name'],
+                    $input['customer_email'],
+                    $input['date'],
+                    $input['participants']
                 );
-                echo json_encode($result);
-                exit();
+                
+                if ($result['success']) {
+                    ApiResponse::created($result, 'Tour booked successfully');
+                } else {
+                    ApiResponse::error($result['message'] ?? 'Failed to book tour', [], 400);
+                }
             }
 
             if ($type === 'hotel') {
+                // Validate required fields
+                $required = ['hotel_id', 'customer_name', 'customer_email', 'checkin', 'checkout', 'rooms'];
+                $errors = [];
+                foreach ($required as $field) {
+                    if (!isset($input[$field]) || empty($input[$field])) {
+                        $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required';
+                    }
+                }
+                if (!empty($errors)) {
+                    ApiResponse::validationError($errors);
+                }
+                
                 $result = ServiceConsumer::bookHotel(
-                    $input['hotel_id'] ?? null,
-                    $input['customer_name'] ?? null,
-                    $input['customer_email'] ?? null,
-                    $input['checkin'] ?? null,
-                    $input['checkout'] ?? null,
-                    $input['rooms'] ?? null
+                    $input['hotel_id'],
+                    $input['customer_name'],
+                    $input['customer_email'],
+                    $input['checkin'],
+                    $input['checkout'],
+                    $input['rooms']
                 );
-                echo json_encode($result);
-                exit();
+                
+                if ($result['success']) {
+                    ApiResponse::created($result, 'Hotel room booked successfully');
+                } else {
+                    ApiResponse::error($result['message'] ?? 'Failed to book hotel', [], 400);
+                }
             }
 
             if ($type === 'taxi') {
+                // Validate required fields
+                $required = ['taxi_id', 'customer_name', 'customer_email', 'pickup_location', 'destination', 'pickup_time'];
+                $errors = [];
+                foreach ($required as $field) {
+                    if (!isset($input[$field]) || empty($input[$field])) {
+                        $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required';
+                    }
+                }
+                if (!empty($errors)) {
+                    ApiResponse::validationError($errors);
+                }
+                
                 $result = ServiceConsumer::bookTaxi(
-                    $input['taxi_id'] ?? null,
-                    $input['customer_name'] ?? null,
-                    $input['customer_email'] ?? null,
-                    $input['pickup_location'] ?? null,
-                    $input['destination'] ?? null,
-                    $input['pickup_time'] ?? null
+                    $input['taxi_id'],
+                    $input['customer_name'],
+                    $input['customer_email'],
+                    $input['pickup_location'],
+                    $input['destination'],
+                    $input['pickup_time']
                 );
-                echo json_encode($result);
-                exit();
+                
+                if ($result['success']) {
+                    ApiResponse::created($result, 'Taxi booked successfully');
+                } else {
+                    ApiResponse::error($result['message'] ?? 'Failed to book taxi', [], 400);
+                }
             }
         }
 
-        http_response_code(404);
-        echo json_encode(['success' => false, 'message' => 'Invalid endpoint']);
-        exit();
+        ApiResponse::notFound('Invalid endpoint');
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
-        exit();
+        ApiResponse::serverError('Server error: ' . $e->getMessage());
     }
 }
 ?>

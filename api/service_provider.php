@@ -20,6 +20,7 @@ require_once '../backend/Restaurant.php';
 require_once '../backend/Menu.php';
 require_once '../backend/Reservation.php';
 require_once '../backend/ApiKey.php';
+require_once '../backend/ApiResponse.php';
 
 try {
     // Get request data
@@ -61,20 +62,12 @@ try {
         
         // Validate API key
         if (empty($apiKey)) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'API key is required for this operation'
-            ]);
-            exit();
+            ApiResponse::unauthorized('API key is required for this operation');
         }
         
         $apiKeyRecord = $apiKeyManager->validateApiKey($apiKey);
         if (!$apiKeyRecord) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Invalid or inactive API key'
-            ]);
-            exit();
+            ApiResponse::unauthorized('Invalid or inactive API key');
         }
         
         // Log API key usage
@@ -83,11 +76,7 @@ try {
         // Check permissions
         if (($method === 'POST' || $method === 'PUT' || $method === 'DELETE') && 
             $apiKeyRecord['permissions'] === 'read') {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Insufficient permissions for this operation'
-            ]);
-            exit();
+            ApiResponse::forbidden('Insufficient permissions for this operation');
         }
     }
     
@@ -109,10 +98,7 @@ try {
             break;
             
         default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Invalid endpoint. Available endpoints: restaurants, menu, reservations, availability'
-            ]);
+            ApiResponse::notFound('Invalid endpoint. Available endpoints: restaurants, menu, reservations, availability');
             break;
     }
     
@@ -123,10 +109,7 @@ try {
     $apiKeyManager->close();
     
 } catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ]);
+    ApiResponse::serverError('Server error: ' . $e->getMessage());
 }
 
 /**
@@ -143,20 +126,16 @@ function handleRestaurants($method, $id, $input, $restaurantManager, $menuManage
                     $menuItems = $menuManager->getMenuItemsByRestaurant($id);
                     $restaurant['menu_items'] = $menuItems;
                     
-                    echo json_encode([
-                        'success' => true,
-                        'data' => $restaurant
-                    ]);
+                    ApiResponse::success($restaurant, 'Restaurant retrieved successfully');
                 } else {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Restaurant not found'
-                    ]);
+                    ApiResponse::notFound('Restaurant not found');
                 }
             } else {
-                // Get all restaurants or search
+                // Get all restaurants with pagination and filters
                 $search = isset($_GET['search']) ? $_GET['search'] : '';
                 $cuisine = isset($_GET['cuisine']) ? $_GET['cuisine'] : '';
+                $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                $perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
                 
                 if ($search) {
                     $restaurants = $restaurantManager->searchRestaurants($search);
@@ -166,22 +145,33 @@ function handleRestaurants($method, $id, $input, $restaurantManager, $menuManage
                     $restaurants = $restaurantManager->getAllRestaurants();
                 }
                 
-                echo json_encode([
-                    'success' => true,
-                    'data' => $restaurants
-                ]);
+                // Apply pagination
+                $total = count($restaurants);
+                $offset = ($page - 1) * $perPage;
+                $paged = array_slice($restaurants, $offset, $perPage);
+                
+                ApiResponse::paginated(
+                    $paged,
+                    $total,
+                    $page,
+                    $perPage,
+                    'Restaurants retrieved successfully'
+                );
             }
             break;
             
         case 'POST':
             // Create new restaurant
-            if (!isset($input['name']) || !isset($input['description']) || !isset($input['cuisine']) || 
-                !isset($input['address']) || !isset($input['phone']) || !isset($input['price_range'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Name, description, cuisine, address, phone, and price_range are required'
-                ]);
-                exit();
+            $required = ['name', 'description', 'cuisine', 'address', 'phone', 'price_range'];
+            $errors = [];
+            foreach ($required as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    $errors[$field] = ucfirst($field) . ' is required';
+                }
+            }
+            
+            if (!empty($errors)) {
+                ApiResponse::validationError($errors);
             }
             
             $result = $restaurantManager->createRestaurant(
@@ -195,26 +185,29 @@ function handleRestaurants($method, $id, $input, $restaurantManager, $menuManage
                 isset($input['seating_capacity']) ? $input['seating_capacity'] : 0
             );
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::created($result['data'], 'Restaurant created successfully');
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'PUT':
             // Update restaurant
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant ID is required'
-                ]);
-                exit();
+                ApiResponse::validationError(['id' => 'Restaurant ID is required']);
             }
             
-            if (!isset($input['name']) || !isset($input['description']) || !isset($input['cuisine']) || 
-                !isset($input['address']) || !isset($input['phone']) || !isset($input['price_range'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Name, description, cuisine, address, phone, and price_range are required'
-                ]);
-                exit();
+            $required = ['name', 'description', 'cuisine', 'address', 'phone', 'price_range'];
+            $errors = [];
+            foreach ($required as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    $errors[$field] = ucfirst($field) . ' is required';
+                }
+            }
+            
+            if (!empty($errors)) {
+                ApiResponse::validationError($errors);
             }
             
             $result = $restaurantManager->updateRestaurant(
@@ -229,28 +222,29 @@ function handleRestaurants($method, $id, $input, $restaurantManager, $menuManage
                 isset($input['seating_capacity']) ? $input['seating_capacity'] : 0
             );
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::success($result['data'], 'Restaurant updated successfully');
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'DELETE':
             // Delete restaurant
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant ID is required'
-                ]);
-                exit();
+                ApiResponse::validationError(['id' => 'Restaurant ID is required']);
             }
             
             $result = $restaurantManager->deleteRestaurant($id);
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::noContent();
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed for restaurants endpoint'
-            ]);
+            ApiResponse::error('Method not allowed for restaurants endpoint', [], 405);
             break;
     }
 }
@@ -265,15 +259,9 @@ function handleMenu($method, $id, $input, $menuManager) {
                 // Get specific menu item
                 $menuItem = $menuManager->getMenuItemById($id);
                 if ($menuItem) {
-                    echo json_encode([
-                        'success' => true,
-                        'data' => $menuItem
-                    ]);
+                    ApiResponse::success($menuItem, 'Menu item retrieved successfully');
                 } else {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Menu item not found'
-                    ]);
+                    ApiResponse::notFound('Menu item not found');
                 }
             } else {
                 // Get menu items by restaurant or category
@@ -285,29 +273,26 @@ function handleMenu($method, $id, $input, $menuManager) {
                 } else if ($restaurantId) {
                     $menuItems = $menuManager->getMenuItemsByRestaurant($restaurantId);
                 } else {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Restaurant ID is required'
-                    ]);
+                    ApiResponse::validationError(['restaurant_id' => 'Restaurant ID is required']);
                     return;
                 }
                 
-                echo json_encode([
-                    'success' => true,
-                    'data' => $menuItems
-                ]);
+                ApiResponse::success($menuItems, 'Menu items retrieved successfully');
             }
             break;
             
         case 'POST':
             // Create new menu item
-            if (!isset($input['restaurant_id']) || !isset($input['name']) || !isset($input['description']) || 
-                !isset($input['price']) || !isset($input['category'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant ID, name, description, price, and category are required'
-                ]);
-                exit();
+            $required = ['restaurant_id', 'name', 'description', 'price', 'category'];
+            $errors = [];
+            foreach ($required as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required';
+                }
+            }
+            
+            if (!empty($errors)) {
+                ApiResponse::validationError($errors);
             }
             
             $result = $menuManager->createMenuItem(
@@ -320,26 +305,29 @@ function handleMenu($method, $id, $input, $menuManager) {
                 isset($input['available']) ? $input['available'] : 1
             );
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::created($result['data'], 'Menu item created successfully');
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'PUT':
             // Update menu item
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Menu item ID is required'
-                ]);
-                exit();
+                ApiResponse::validationError(['id' => 'Menu item ID is required']);
             }
             
-            if (!isset($input['name']) || !isset($input['description']) || !isset($input['price']) || 
-                !isset($input['category'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Name, description, price, and category are required'
-                ]);
-                exit();
+            $required = ['name', 'description', 'price', 'category'];
+            $errors = [];
+            foreach ($required as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    $errors[$field] = ucfirst($field) . ' is required';
+                }
+            }
+            
+            if (!empty($errors)) {
+                ApiResponse::validationError($errors);
             }
             
             $result = $menuManager->updateMenuItem(
@@ -352,47 +340,49 @@ function handleMenu($method, $id, $input, $menuManager) {
                 isset($input['available']) ? $input['available'] : 1
             );
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::success($result['data'], 'Menu item updated successfully');
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'DELETE':
             // Delete menu item
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Menu item ID is required'
-                ]);
-                exit();
+                ApiResponse::validationError(['id' => 'Menu item ID is required']);
             }
             
             $result = $menuManager->deleteMenuItem($id);
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::noContent();
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed for menu endpoint'
-            ]);
+            ApiResponse::error('Method not allowed for menu endpoint', [], 405);
             break;
     }
 }
 
-/**
  * Handle reservations endpoint
  */
 function handleReservations($method, $id, $input, $reservationManager) {
     switch ($method) {
         case 'POST':
             // Create new reservation
-            if (!isset($input['restaurant_id']) || !isset($input['customer_name']) || 
-                !isset($input['customer_email']) || !isset($input['customer_phone']) ||
-                !isset($input['date']) || !isset($input['time']) || !isset($input['guests'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant ID, customer name, email, phone, date, time, and guests are required'
-                ]);
-                return;
+            $required = ['restaurant_id', 'customer_name', 'customer_email', 'customer_phone', 'date', 'time', 'guests'];
+            $errors = [];
+            foreach ($required as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . ' is required';
+                }
+            }
+            
+            if (!empty($errors)) {
+                ApiResponse::validationError($errors);
             }
             
             $result = $reservationManager->createReservation(
@@ -406,7 +396,11 @@ function handleReservations($method, $id, $input, $reservationManager) {
                 isset($input['special_requests']) ? $input['special_requests'] : null
             );
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::created($result['data'], 'Reservation created successfully');
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'GET':
@@ -414,31 +408,19 @@ function handleReservations($method, $id, $input, $reservationManager) {
                 // Get specific reservation
                 $reservation = $reservationManager->getReservationById($id);
                 if ($reservation) {
-                    echo json_encode([
-                        'success' => true,
-                        'data' => $reservation
-                    ]);
+                    ApiResponse::success($reservation, 'Reservation retrieved successfully');
                 } else {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Reservation not found'
-                    ]);
+                    ApiResponse::notFound('Reservation not found');
                 }
             } else {
-                // Get reservations by restaurant or status
+                // Get reservations by restaurant or status with pagination
                 $restaurantId = isset($_GET['restaurant_id']) ? (int)$_GET['restaurant_id'] : null;
                 $status = isset($_GET['status']) ? $_GET['status'] : null;
+                $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                $perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
                 
                 if ($restaurantId && $status) {
-                    // This would require a new method in Reservation class
-                    $reservations = [];
-                    // For now, we'll just get by restaurant and filter in PHP
-                    $allReservations = $reservationManager->getReservationsByRestaurant($restaurantId);
-                    foreach ($allReservations as $reservation) {
-                        if ($reservation['status'] == $status) {
-                            $reservations[] = $reservation;
-                        }
-                    }
+                    $reservations = $reservationManager->getReservationsByRestaurantAndStatus($restaurantId, $status);
                 } else if ($restaurantId) {
                     $reservations = $reservationManager->getReservationsByRestaurant($restaurantId);
                 } else if ($status) {
@@ -447,21 +429,25 @@ function handleReservations($method, $id, $input, $reservationManager) {
                     $reservations = $reservationManager->getAllReservations();
                 }
                 
-                echo json_encode([
-                    'success' => true,
-                    'data' => $reservations
-                ]);
+                // Apply pagination
+                $total = count($reservations);
+                $offset = ($page - 1) * $perPage;
+                $paged = array_slice($reservations, $offset, $perPage);
+                
+                ApiResponse::paginated(
+                    $paged,
+                    $total,
+                    $page,
+                    $perPage,
+                    'Reservations retrieved successfully'
+                );
             }
             break;
             
         case 'PUT':
             // Update reservation
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Reservation ID is required'
-                ]);
-                exit();
+                ApiResponse::validationError(['id' => 'Reservation ID is required']);
             }
             
             // Check if updating status or details
@@ -476,35 +462,32 @@ function handleReservations($method, $id, $input, $reservationManager) {
                     isset($input['special_requests']) ? $input['special_requests'] : null
                 );
             } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Either status or date/time/guests are required for update'
-                ]);
-                exit();
+                ApiResponse::validationError(['update_data' => 'Either status or date/time/guests are required for update']);
             }
             
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::success($result['data'], 'Reservation updated successfully');
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         case 'DELETE':
             // Delete reservation
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Reservation ID is required'
-                ]);
-                exit();
+                ApiResponse::validationError(['id' => 'Reservation ID is required']);
             }
             
             $result = $reservationManager->deleteReservation($id);
-            echo json_encode($result);
+            if ($result['success']) {
+                ApiResponse::noContent();
+            } else {
+                ApiResponse::error($result['message'], [], 400);
+            }
             break;
             
         default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed for reservations endpoint'
-            ]);
+            ApiResponse::error('Method not allowed for reservations endpoint', [], 405);
             break;
     }
 }
@@ -516,11 +499,7 @@ function handleAvailability($method, $id, $input, $restaurantManager, $reservati
     switch ($method) {
         case 'GET':
             if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant ID is required for availability check'
-                ]);
-                return;
+                ApiResponse::validationError(['id' => 'Restaurant ID is required for availability check']);
             }
             
             $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
@@ -529,11 +508,7 @@ function handleAvailability($method, $id, $input, $restaurantManager, $reservati
             // Get restaurant details
             $restaurant = $restaurantManager->getRestaurantById($id);
             if (!$restaurant) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant not found'
-                ]);
-                return;
+                ApiResponse::notFound('Restaurant not found');
             }
             
             // Get reservations for the date
@@ -557,24 +532,18 @@ function handleAvailability($method, $id, $input, $restaurantManager, $reservati
             
             $availableSeats = $totalSeats - $reservedSeats;
             
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'restaurant_id' => $id,
-                    'date' => $date,
-                    'total_seats' => $totalSeats,
-                    'reserved_seats' => $reservedSeats,
-                    'available_seats' => $availableSeats,
-                    'availability_percentage' => $totalSeats > 0 ? round(($availableSeats / $totalSeats) * 100, 2) : 0
-                ]
-            ]);
+            ApiResponse::success([
+                'restaurant_id' => $id,
+                'date' => $date,
+                'total_seats' => $totalSeats,
+                'reserved_seats' => $reservedSeats,
+                'available_seats' => $availableSeats,
+                'availability_percentage' => $totalSeats > 0 ? round(($availableSeats / $totalSeats) * 100, 2) : 0
+            ], 'Availability retrieved successfully');
             break;
             
         default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed for availability endpoint'
-            ]);
+            ApiResponse::error('Method not allowed for availability endpoint', [], 405);
             break;
     }
 }
