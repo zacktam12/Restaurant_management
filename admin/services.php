@@ -14,45 +14,61 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] ||
 }
 
 require_once '../backend/config.php';
+require_once '../backend/Service.php';
 
-// Sample external services data (in a real app, this would come from a database)
-$externalServices = [
-    [
-        'id' => 1,
-        'type' => 'tour',
-        'name' => 'City Historical Tour',
-        'description' => '3-hour guided tour of historical landmarks',
-        'price' => 45.00,
-        'image' => '/city-tour-bus.jpg',
-        'rating' => 4.7,
-        'available' => true
-    ],
-    [
-        'id' => 2,
-        'type' => 'hotel',
-        'name' => 'Grand Palace Hotel',
-        'description' => '5-star luxury accommodation',
-        'price' => 250.00,
-        'image' => '/luxury-hotel-exterior.png',
-        'rating' => 4.9,
-        'available' => true
-    ],
-    [
-        'id' => 3,
-        'type' => 'taxi',
-        'name' => 'Premium Taxi Service',
-        'description' => '24/7 reliable transportation',
-        'price' => 25.00,
-        'image' => '/taxi-cab-service.jpg',
-        'rating' => 4.5,
-        'available' => true
-    ]
-];
+$serviceManager = new Service();
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'add_service':
+                $result = $serviceManager->createService(
+                    $_POST['service_type'],
+                    $_POST['service_name'],
+                    $_POST['service_description'],
+                    $_POST['service_price'],
+                    $_POST['service_image'] ?? null,
+                    $_POST['service_rating'] ?? 0.0,
+                    isset($_POST['service_available']) ? 1 : 0
+                );
+                $message = $result['message'];
+                break;
+                
+            case 'update_service':
+                $result = $serviceManager->updateService(
+                    $_POST['id'],
+                    $_POST['service_type'],
+                    $_POST['service_name'],
+                    $_POST['service_description'],
+                    $_POST['service_price'],
+                    $_POST['service_image'] ?? null,
+                    $_POST['service_rating'] ?? 0.0,
+                    isset($_POST['service_available']) ? 1 : 0
+                );
+                $message = $result['message'];
+                break;
+                
+            case 'delete_service':
+                $result = $serviceManager->deleteService($_POST['id']);
+                $message = $result['message'];
+                break;
+                
+            case 'toggle_availability':
+                $result = $serviceManager->toggleAvailability($_POST['id']);
+                $message = $result['message'];
+                break;
+        }
+    }
+}
+
+// Get all services
+$allServices = $serviceManager->getAllServices();
 
 // Group services by type
-$tours = array_filter($externalServices, function($service) { return $service['type'] == 'tour'; });
-$hotels = array_filter($externalServices, function($service) { return $service['type'] == 'hotel'; });
-$taxis = array_filter($externalServices, function($service) { return $service['type'] == 'taxi'; });
+$tours = array_filter($allServices, function($service) { return $service['type'] == 'tour'; });
+$hotels = array_filter($allServices, function($service) { return $service['type'] == 'hotel'; });
+$taxis = array_filter($allServices, function($service) { return $service['type'] == 'taxi'; });
 ?>
 
 <!DOCTYPE html>
@@ -129,6 +145,13 @@ $taxis = array_filter($externalServices, function($service) { return $service['t
                         <i class="bi bi-plus-lg"></i> Add New Service
                     </button>
                 </div>
+
+                <?php if (isset($message)): ?>
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($message); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php endif; ?>
 
                 <!-- Services Tabs -->
                 <ul class="nav nav-tabs mb-4" id="serviceTabs" role="tablist">
@@ -346,8 +369,26 @@ $taxis = array_filter($externalServices, function($service) { return $service['t
 
         function deleteService(id) {
             if (confirm('Are you sure you want to delete this service?')) {
-                alert('Delete service functionality would be implemented here. Service ID: ' + id);
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="delete_service">
+                    <input type="hidden" name="id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
+        }
+
+        function toggleAvailability(id) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="toggle_availability">
+                <input type="hidden" name="id" value="${id}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>
