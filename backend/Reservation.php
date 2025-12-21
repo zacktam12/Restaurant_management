@@ -190,6 +190,21 @@ class Reservation {
     }
 
     /**
+     * Get reservations by restaurant and status
+     */
+    public function getReservationsByRestaurantAndStatus($restaurantId, $status) {
+        $query = "SELECT * FROM {$this->table} WHERE restaurant_id = ? AND status = ? ORDER BY date DESC, time DESC";
+        $params = [$restaurantId, $status];
+        $paramTypes = "is";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Get upcoming reservations for a restaurant
      */
     public function getUpcomingReservations($restaurantId, $days = 30) {
