@@ -19,8 +19,8 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Documentation - Restaurant Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
     <style>
         .endpoint-card {
             margin-bottom: 1rem;
@@ -41,6 +41,21 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
             border-radius: 0.25rem;
             overflow-x: auto;
         }
+        /* Custom icon replacement */
+        .custom-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            background-color: currentColor;
+            mask-size: cover;
+            -webkit-mask-size: cover;
+            vertical-align: -0.125em;
+        }
+        
+        .icon-code-square {
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z'/%3E%3Cpath d='M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0zm2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0z'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z'/%3E%3Cpath d='M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0zm2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0z'/%3E%3C/svg%3E");
+        }
     </style>
 </head>
 <body>
@@ -48,7 +63,7 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <i class="bi bi-code-square"></i> API Documentation
+                <span class="custom-icon icon-code-square"></span> API Documentation
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -516,6 +531,6 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/app.js"></script>
 </body>
 </html>
