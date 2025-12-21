@@ -20,9 +20,38 @@ require_once '../backend/Restaurant.php';
 $reservationManager = new Reservation();
 $restaurantManager = new Restaurant();
 
+// Handle cancel confirmation
+if (isset($_GET['confirm_cancel'])) {
+    $reservationId = $_GET['confirm_cancel'];
+    
+    // We'll handle the actual cancellation through a GET request
+}
+
 // Handle status update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'cancel_reservation') {
     $result = $reservationManager->updateReservationStatus($_POST['id'], 'cancelled');
+    
+    if ($result['success']) {
+        $message = "Reservation cancelled successfully!";
+        $messageType = "success";
+    } else {
+        $message = "Error cancelling reservation: " . $result['message'];
+        $messageType = "danger";
+    }
+} else if (isset($_GET['confirm_cancel'])) {
+    // Handle cancel confirmation through GET parameters
+    $reservationId = $_GET['confirm_cancel'];
+    
+    // Show confirmation message
+    $reservation = $reservationManager->getReservationById($reservationId);
+    if ($reservation) {
+        $message = 'Are you sure you want to cancel your reservation for "' . htmlspecialchars($reservation['customer_name']) . '"?';
+        $messageType = 'warning';
+        $showCancelConfirmation = true;
+    }
+} else if (isset($_GET['cancel_confirmed']) && isset($_GET['id'])) {
+    // Handle confirmed cancellation
+    $result = $reservationManager->updateReservationStatus($_GET['id'], 'cancelled');
     
     if ($result['success']) {
         $message = "Reservation cancelled successfully!";
@@ -122,6 +151,22 @@ foreach ($reservations as $reservation) {
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
+        
+        <?php if (isset($showCancelConfirmation) && $showCancelConfirmation): ?>
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">Confirm Cancellation</h4>
+            <p><?php echo htmlspecialchars($message); ?></p>
+            <hr>
+            <div class="d-flex">
+                <a href="bookings.php" class="btn btn-secondary me-2">Cancel</a>
+                <form method="GET" class="d-inline">
+                    <input type="hidden" name="cancel_confirmed" value="1">
+                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_cancel']; ?>">
+                    <button type="submit" class="btn btn-danger">Yes, Cancel Reservation</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Upcoming Reservations -->
         <div class="card mb-4">
@@ -172,9 +217,8 @@ foreach ($reservations as $reservation) {
                                 </td>
                                 <td>
                                     <?php if ($reservation['status'] != 'cancelled'): ?>
-                                    <form method="POST" onsubmit="return confirm('Are you sure you want to cancel this reservation?')">
-                                        <input type="hidden" name="action" value="cancel_reservation">
-                                        <input type="hidden" name="id" value="<?php echo $reservation['id']; ?>">
+                                    <form method="GET">
+                                        <input type="hidden" name="confirm_cancel" value="<?php echo $reservation['id']; ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
                                             <i class="bi bi-x-circle"></i> Cancel
                                         </button>

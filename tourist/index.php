@@ -183,58 +183,16 @@ foreach ($allRestaurants as $restaurant) {
                         </p>
                     </div>
                     <div class="card-footer">
-                        <button class="btn btn-primary w-100" data-bs-toggle="modal" 
-                                data-bs-target="#reserveModal<?php echo $restaurant['id']; ?>">
-                            <i class="bi bi-calendar-plus"></i> Reserve Table
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Reservation Modal for each restaurant -->
-            <div class="modal fade" id="reserveModal<?php echo $restaurant['id']; ?>" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Reserve Table at <?php echo htmlspecialchars($restaurant['name']); ?></h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <form method="POST">
-                            <div class="modal-body">
-                                <input type="hidden" name="action" value="make_reservation">
-                                <input type="hidden" name="restaurant_id" value="<?php echo $restaurant['id']; ?>">
-                                <div class="mb-3">
-                                    <label for="date<?php echo $restaurant['id']; ?>" class="form-label">Date</label>
-                                    <input type="date" class="form-control" id="date<?php echo $restaurant['id']; ?>" 
-                                           name="date" min="<?php echo date('Y-m-d'); ?>" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="time<?php echo $restaurant['id']; ?>" class="form-label">Time</label>
-                                    <input type="time" class="form-control" id="time<?php echo $restaurant['id']; ?>" 
-                                           name="time" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="guests<?php echo $restaurant['id']; ?>" class="form-label">Number of Guests</label>
-                                    <input type="number" class="form-control" id="guests<?php echo $restaurant['id']; ?>" 
-                                           name="guests" min="1" max="<?php echo $restaurant['seating_capacity']; ?>" 
-                                           value="2" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="phone<?php echo $restaurant['id']; ?>" class="form-label">Phone Number</label>
-                                    <input type="text" class="form-control" id="phone<?php echo $restaurant['id']; ?>" 
-                                           name="phone" value="<?php echo htmlspecialchars($_SESSION['user']['phone'] ?? ''); ?>" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="special_requests<?php echo $restaurant['id']; ?>" class="form-label">Special Requests</label>
-                                    <textarea class="form-control" id="special_requests<?php echo $restaurant['id']; ?>" 
-                                              name="special_requests" rows="2" 
-                                              placeholder="Any dietary restrictions or special requirements"></textarea>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" class="btn btn-primary">Make Reservation</button>
-                            </div>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="make_reservation">
+                            <input type="hidden" name="restaurant_id" value="<?php echo $restaurant['id']; ?>">
+                            <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                            <input type="hidden" name="time" value="19:00">
+                            <input type="hidden" name="guests" value="2">
+                            <input type="hidden" name="phone" value="<?php echo htmlspecialchars($_SESSION['user']['phone'] ?? ''); ?>">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-calendar-plus"></i> Reserve Table
+                            </button>
                         </form>
                     </div>
                 </div>

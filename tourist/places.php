@@ -18,8 +18,63 @@ require_once '../backend/Place.php';
 
 $placeManager = new Place();
 
+// Handle actions
+$message = '';
+if (isset($_GET['action'])) {
+    switch ($_GET['action']) {
+        case 'book_tour':
+            if (isset($_GET['place_name'])) {
+                $message = 'Booking functionality for ' . htmlspecialchars($_GET['place_name']) . ' would be implemented here.';
+            }
+            break;
+        case 'find_restaurants':
+            if (isset($_GET['city'])) {
+                $message = 'Finding restaurants in ' . htmlspecialchars($_GET['city']) . ' would be implemented here.';
+            }
+            break;
+    }
+}
+
 // Get all places
 $search = isset($_GET['search']) ? $_GET['search'] : '';
+// Handle actions
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+$message = '';
+
+if ($action == 'view_details' && isset($_GET['place_id'])) {
+    $placeId = $_GET['place_id'];
+    $placeDetails = $placeManager->getPlaceById($placeId);
+    
+    if ($placeDetails) {
+        // Display place details in a simple way
+        $message = '<strong>' . htmlspecialchars($placeDetails['name']) . '</strong><br>';
+        $message .= htmlspecialchars($placeDetails['description']) . '<br><br>';
+        $message .= '<strong>Location:</strong> ' . htmlspecialchars($placeDetails['city']) . ', ' . htmlspecialchars($placeDetails['country']) . '<br>';
+        $message .= '<strong>Rating:</strong> ' . htmlspecialchars($placeDetails['rating']) . '/5.0<br>';
+        $message .= '<strong>Category:</strong> ' . ucfirst(htmlspecialchars($placeDetails['category'])) . '<br><br>';
+        
+        // Add action buttons
+        $message .= '<form method="GET" class="d-inline">
+                        <input type="hidden" name="action" value="book_tour">
+                        <input type="hidden" name="place_name" value="' . htmlspecialchars($placeDetails['name']) . '">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-compass"></i> Book a Tour
+                        </button>
+                     </form>
+                     <form method="GET" class="d-inline">
+                        <input type="hidden" name="action" value="find_restaurants">
+                        <input type="hidden" name="city" value="' . htmlspecialchars($placeDetails['city']) . '">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-shop"></i> Nearby Restaurants
+                        </button>
+                     </form>';
+    }
+} else if ($action == 'book_tour' && isset($_GET['place_name'])) {
+    $message = 'To book a tour for "' . htmlspecialchars($_GET['place_name']) . '", please visit the Services page.';
+} else if ($action == 'find_restaurants' && isset($_GET['city'])) {
+    $message = 'To find restaurants in "' . htmlspecialchars($_GET['city']) . '", please visit the Restaurants page.';
+}
+
 $category = isset($_GET['category']) ? $_GET['category'] : '';
 
 if ($search) {
@@ -127,6 +182,13 @@ foreach ($allPlaces as $place) {
             </div>
         </div>
 
+        <?php if (!empty($message)): ?>
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <?php echo htmlspecialchars($message); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+
         <!-- Places Grid -->
         <div class="row">
             <?php if (empty($places)): ?>
@@ -153,41 +215,13 @@ foreach ($allPlaces as $place) {
                         </p>
                     </div>
                     <div class="card-footer">
-                        <button class="btn btn-outline-primary w-100" data-bs-toggle="modal" 
-                                data-bs-target="#placeModal<?php echo $place['id']; ?>">
-                            <i class="bi bi-info-circle"></i> More Info
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Place Details Modal -->
-            <div class="modal fade" id="placeModal<?php echo $place['id']; ?>" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><?php echo htmlspecialchars($place['name']); ?></h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p><?php echo htmlspecialchars($place['description']); ?></p>
-                            <p>
-                                <strong>Location:</strong> <?php echo htmlspecialchars($place['city']); ?>, <?php echo htmlspecialchars($place['country']); ?><br>
-                                <strong>Rating:</strong> <?php echo htmlspecialchars($place['rating']); ?>/5.0<br>
-                                <strong>Category:</strong> <?php echo ucfirst(htmlspecialchars($place['category'])); ?>
-                            </p>
-                            <div class="mt-3">
-                                <button class="btn btn-primary" onclick="bookTourForPlace('<?php echo htmlspecialchars($place['name']); ?>')">
-                                    <i class="bi bi-compass"></i> Book a Tour
-                                </button>
-                                <button class="btn btn-success" onclick="findNearbyRestaurants('<?php echo htmlspecialchars($place['city']); ?>')">
-                                    <i class="bi bi-shop"></i> Nearby Restaurants
-                                </button>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
+                        <form method="GET" class="d-inline">
+                            <input type="hidden" name="action" value="view_details">
+                            <input type="hidden" name="place_id" value="<?php echo $place['id']; ?>">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-info-circle"></i> More Info
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -197,15 +231,6 @@ foreach ($allPlaces as $place) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function bookTourForPlace(placeName) {
-            alert('Booking functionality for ' + placeName + ' would be implemented here.');
-        }
-
-        function findNearbyRestaurants(city) {
-            alert('Finding restaurants in ' + city + ' would be implemented here.');
-        }
-    </script>
 </body>
 </html>
 

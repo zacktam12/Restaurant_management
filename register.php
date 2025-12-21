@@ -15,6 +15,41 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     }
     exit();
 }
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    require_once 'backend/config.php';
+    require_once 'backend/User.php';
+    
+    $userManager = new User();
+    
+    $name = $_POST['name'] ?? '';
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? '';
+    $phone = $_POST['phone'] ?? '';
+    $professional_details = $_POST['professional_details'] ?? '';
+    
+    // Validate input
+    if (empty($name) || empty($email) || empty($password) || empty($role)) {
+        $error = 'Please fill in all required fields.';
+    } else {
+        // Attempt registration
+        $result = $userManager->register($name, $email, $password, $role, $phone, $professional_details);
+        
+        if ($result['success']) {
+            $success = 'Registration successful! You can now login.';
+        } else {
+            $error = $result['message'];
+        }
+    }
+} else {
+    // Set default values for form fields
+    $role = '';
+    if (isset($_POST['role'])) {
+        $role = $_POST['role'];
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -49,8 +84,22 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
                             <h2 class="mt-3">Create Account</h2>
                             <p class="text-muted">Sign up for a new account</p>
                         </div>
+                        
+                        <?php if (isset($success)): ?>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($success); ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (isset($error)): ?>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($error); ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <?php endif; ?>
 
-                        <form id="registerForm">
+                        <form method="POST">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Full Name</label>
                                 <input type="text" class="form-control" id="name" name="name" required>
@@ -67,14 +116,14 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
                                 <label for="role" class="form-label">Role</label>
                                 <select class="form-select" id="role" name="role" required>
                                     <option value="">Select your role</option>
-                                    <option value="customer">Customer</option>
-                                    <option value="tourist">Tourist</option>
-                                    <option value="tour_guide">Tour Guide</option>
+                                    <option value="customer"<?php echo ($role == 'customer') ? ' selected' : ''; ?>>Customer</option>
+                                    <option value="tourist"<?php echo ($role == 'tourist') ? ' selected' : ''; ?>>Tourist</option>
+                                    <option value="tour_guide"<?php echo ($role == 'tour_guide') ? ' selected' : ''; ?>>Tour Guide</option>
                                 </select>
                             </div>
-                            <div class="mb-3" id="professionalDetailsField" style="display: none;">
+                            <div class="mb-3" id="professionalDetailsField" style="display: <?php echo ($role == 'tour_guide') ? 'block' : 'none'; ?>;">
                                 <label for="professional_details" class="form-label">Professional Details</label>
-                                <textarea class="form-control" id="professional_details" name="professional_details" rows="3" placeholder="Enter your professional background and experience"></textarea>
+                                <textarea class="form-control" id="professional_details" name="professional_details" rows="3" placeholder="Enter your professional background and experience"><?php echo htmlspecialchars($professional_details ?? ''); ?></textarea>
                             </div>
                             <div class="mb-3">
                                 <label for="phone" class="form-label">Phone Number</label>
@@ -95,46 +144,5 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Show/hide professional details field based on role selection
-        document.getElementById('role').addEventListener('change', function() {
-            const professionalDetailsField = document.getElementById('professionalDetailsField');
-            if (this.value === 'tour_guide') {
-                professionalDetailsField.style.display = 'block';
-            } else {
-                professionalDetailsField.style.display = 'none';
-            }
-        });
-
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            fetch('api/auth.php?action=register', {
-                method: 'POST',
-                body: JSON.stringify({
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    password: formData.get('password'),
-                    role: formData.get('role'),
-                    phone: formData.get('phone'),
-                    professional_details: formData.get('professional_details')
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Registration successful! You can now login.');
-                    window.location.href = 'login.php';
-                } else {
-                    alert('Registration failed: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error during registration: ' + error.message);
-            });
-        });
-    </script>
 </body>
 </html>

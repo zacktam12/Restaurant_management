@@ -194,53 +194,16 @@ $taxis = ServiceConsumer::getTaxiServices();
                                 </p>
                             </div>
                             <div class="card-footer">
-                                <button class="btn btn-primary w-100" data-bs-toggle="modal" 
-                                        data-bs-target="#bookTourModal<?php echo $tour['id']; ?>">
-                                    <i class="bi bi-calendar-plus"></i> Book Tour
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Book Tour Modal -->
-                    <div class="modal fade" id="bookTourModal<?php echo $tour['id']; ?>" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Book <?php echo htmlspecialchars($tour['name']); ?></h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
                                 <form method="POST">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="action" value="book_service">
-                                        <input type="hidden" name="service_type" value="tour">
-                                        <input type="hidden" name="service_id" value="<?php echo $tour['id']; ?>">
-                                        <div class="mb-3">
-                                            <label for="tour_date<?php echo $tour['id']; ?>" class="form-label">Date</label>
-                                            <input type="date" class="form-control" id="tour_date<?php echo $tour['id']; ?>" 
-                                                   name="date" min="<?php echo date('Y-m-d'); ?>" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="tour_time<?php echo $tour['id']; ?>" class="form-label">Time</label>
-                                            <input type="time" class="form-control" id="tour_time<?php echo $tour['id']; ?>" 
-                                                   name="time" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="tour_guests<?php echo $tour['id']; ?>" class="form-label">Number of Guests</label>
-                                            <input type="number" class="form-control" id="tour_guests<?php echo $tour['id']; ?>" 
-                                                   name="guests" min="1" value="2" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="tour_special_requests<?php echo $tour['id']; ?>" class="form-label">Special Requests</label>
-                                            <textarea class="form-control" id="tour_special_requests<?php echo $tour['id']; ?>" 
-                                                      name="special_requests" rows="2" 
-                                                      placeholder="Any special requirements"></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Book Tour</button>
-                                    </div>
+                                    <input type="hidden" name="action" value="book_service">
+                                    <input type="hidden" name="service_type" value="tour">
+                                    <input type="hidden" name="service_id" value="<?php echo $tour['id']; ?>">
+                                    <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                                    <input type="hidden" name="time" value="10:00">
+                                    <input type="hidden" name="guests" value="2">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-calendar-plus"></i> Book Tour
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -275,53 +238,16 @@ $taxis = ServiceConsumer::getTaxiServices();
                                 </p>
                             </div>
                             <div class="card-footer">
-                                <button class="btn btn-primary w-100" data-bs-toggle="modal" 
-                                        data-bs-target="#bookHotelModal<?php echo $hotel['id']; ?>">
-                                    <i class="bi bi-calendar-plus"></i> Book Hotel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Book Hotel Modal -->
-                    <div class="modal fade" id="bookHotelModal<?php echo $hotel['id']; ?>" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Book <?php echo htmlspecialchars($hotel['name']); ?></h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
                                 <form method="POST">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="action" value="book_service">
-                                        <input type="hidden" name="service_type" value="hotel">
-                                        <input type="hidden" name="service_id" value="<?php echo $hotel['id']; ?>">
-                                        <div class="mb-3">
-                                            <label for="checkin_date<?php echo $hotel['id']; ?>" class="form-label">Check-in Date</label>
-                                            <input type="date" class="form-control" id="checkin_date<?php echo $hotel['id']; ?>" 
-                                                   name="date" min="<?php echo date('Y-m-d'); ?>" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="checkout_date<?php echo $hotel['id']; ?>" class="form-label">Check-out Date</label>
-                                            <input type="date" class="form-control" id="checkout_date<?php echo $hotel['id']; ?>" 
-                                                   name="checkout_date" min="<?php echo date('Y-m-d'); ?>" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="hotel_guests<?php echo $hotel['id']; ?>" class="form-label">Number of Guests</label>
-                                            <input type="number" class="form-control" id="hotel_guests<?php echo $hotel['id']; ?>" 
-                                                   name="guests" min="1" value="2" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="hotel_special_requests<?php echo $hotel['id']; ?>" class="form-label">Special Requests</label>
-                                            <textarea class="form-control" id="hotel_special_requests<?php echo $hotel['id']; ?>" 
-                                                      name="special_requests" rows="2" 
-                                                      placeholder="Room preferences, accessibility needs, etc."></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Book Hotel</button>
-                                    </div>
+                                    <input type="hidden" name="action" value="book_service">
+                                    <input type="hidden" name="service_type" value="hotel">
+                                    <input type="hidden" name="service_id" value="<?php echo $hotel['id']; ?>">
+                                    <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                                    <input type="hidden" name="checkout_date" value="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
+                                    <input type="hidden" name="guests" value="2">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-calendar-plus"></i> Book Hotel
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -356,58 +282,17 @@ $taxis = ServiceConsumer::getTaxiServices();
                                 </p>
                             </div>
                             <div class="card-footer">
-                                <button class="btn btn-primary w-100" data-bs-toggle="modal" 
-                                        data-bs-target="#bookTaxiModal<?php echo $taxi['id']; ?>">
-                                    <i class="bi bi-calendar-plus"></i> Book Taxi
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Book Taxi Modal -->
-                    <div class="modal fade" id="bookTaxiModal<?php echo $taxi['id']; ?>" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Book <?php echo htmlspecialchars($taxi['name']); ?></h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
                                 <form method="POST">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="action" value="book_service">
-                                        <input type="hidden" name="service_type" value="taxi">
-                                        <input type="hidden" name="service_id" value="<?php echo $taxi['id']; ?>">
-                                        <div class="mb-3">
-                                            <label for="pickup_date<?php echo $taxi['id']; ?>" class="form-label">Pickup Date</label>
-                                            <input type="date" class="form-control" id="pickup_date<?php echo $taxi['id']; ?>" 
-                                                   name="date" min="<?php echo date('Y-m-d'); ?>" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="pickup_time<?php echo $taxi['id']; ?>" class="form-label">Pickup Time</label>
-                                            <input type="time" class="form-control" id="pickup_time<?php echo $taxi['id']; ?>" 
-                                                   name="time" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="pickup_location<?php echo $taxi['id']; ?>" class="form-label">Pickup Location</label>
-                                            <input type="text" class="form-control" id="pickup_location<?php echo $taxi['id']; ?>" 
-                                                   name="pickup_location" placeholder="Enter pickup address" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="dropoff_location<?php echo $taxi['id']; ?>" class="form-label">Drop-off Location</label>
-                                            <input type="text" class="form-control" id="dropoff_location<?php echo $taxi['id']; ?>" 
-                                                   name="dropoff_location" placeholder="Enter destination address" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="taxi_special_requests<?php echo $taxi['id']; ?>" class="form-label">Special Requests</label>
-                                            <textarea class="form-control" id="taxi_special_requests<?php echo $taxi['id']; ?>" 
-                                                      name="special_requests" rows="2" 
-                                                      placeholder="Any special requirements"></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Book Taxi</button>
-                                    </div>
+                                    <input type="hidden" name="action" value="book_service">
+                                    <input type="hidden" name="service_type" value="taxi">
+                                    <input type="hidden" name="service_id" value="<?php echo $taxi['id']; ?>">
+                                    <input type="hidden" name="date" value="<?php echo date('Y-m-d'); ?>">
+                                    <input type="hidden" name="time" value="10:00">
+                                    <input type="hidden" name="pickup_location" value="Airport">
+                                    <input type="hidden" name="dropoff_location" value="City Center">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-calendar-plus"></i> Book Taxi
+                                    </button>
                                 </form>
                             </div>
                         </div>

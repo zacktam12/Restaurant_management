@@ -15,6 +15,42 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     }
     exit();
 }
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    require_once 'backend/config.php';
+    require_once 'backend/User.php';
+    
+    $userManager = new User();
+    
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? '';
+    
+    // Validate input
+    if (empty($email) || empty($password) || empty($role)) {
+        $error = 'Please fill in all fields.';
+    } else {
+        // Attempt login
+        $result = $userManager->login($email, $password, $role);
+        
+        if ($result['success']) {
+            // Set session variables
+            $_SESSION['logged_in'] = true;
+            $_SESSION['user'] = $result['user'];
+            
+            // Redirect based on role
+            if ($role == 'admin' || $role == 'manager') {
+                header('Location: admin/index.php');
+            } else {
+                header('Location: tourist/index.php');
+            }
+            exit();
+        } else {
+            $error = $result['message'];
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -49,8 +85,15 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
                             <h2 class="mt-3">Restaurant Manager</h2>
                             <p class="text-muted">Sign in to your account</p>
                         </div>
+                        
+                        <?php if (isset($error)): ?>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo htmlspecialchars($error); ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <?php endif; ?>
 
-                        <form id="loginForm">
+                        <form method="POST">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email" name="email" required>
@@ -84,37 +127,5 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            fetch('api/auth.php?action=login', {
-                method: 'POST',
-                body: JSON.stringify({
-                    email: formData.get('email'),
-                    password: formData.get('password'),
-                    role: formData.get('role')
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirect based on role
-                    if (data.user.role === 'admin' || data.user.role === 'manager') {
-                        window.location.href = 'admin/index.php';
-                    } else {
-                        window.location.href = 'tourist/index.php';
-                    }
-                } else {
-                    alert('Login failed: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error during login: ' + error.message);
-            });
-        });
-    </script>
 </body>
 </html>

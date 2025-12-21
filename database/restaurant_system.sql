@@ -176,6 +176,28 @@ CREATE TABLE `reviews` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `api_keys`
+--
+
+CREATE TABLE `api_keys` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `api_key` VARCHAR(64) NOT NULL UNIQUE,
+  `service_name` VARCHAR(255) NOT NULL,
+  `consumer_group` VARCHAR(50) NOT NULL,
+  `permissions` ENUM('read', 'write', 'read_write') NOT NULL DEFAULT 'read',
+  `is_active` TINYINT(1) NOT NULL DEFAULT '1',
+  `usage_count` INT(11) NOT NULL DEFAULT '0',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `last_used` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_api_key` (`api_key`),
+  INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `places`
 --
 
