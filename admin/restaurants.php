@@ -98,13 +98,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
                 
             case 'edit_restaurant':
-                // For now, we'll just show a message that edit functionality would be implemented
-                $message = 'Edit functionality would be implemented here for restaurant ID: ' . $_POST['id'];
+                // Show edit form for restaurant
+                $restaurant = $restaurantManager->getRestaurantById($_POST['id']);
+                if ($restaurant) {
+                    // We'll set a flag to show the edit form
+                    $showEditForm = true;
+                    $editRestaurant = $restaurant;
+                } else {
+                    $message = 'Restaurant not found.';
+                }
                 break;
                 
             case 'edit_menu_item':
-                // For now, we'll just show a message that edit functionality would be implemented
-                $message = 'Edit functionality would be implemented here for menu item ID: ' . $_POST['id'];
+                // Show edit form for menu item
+                $menuItem = $menuManager->getMenuItemById($_POST['id']);
+                if ($menuItem) {
+                    // We'll set a flag to show the edit form
+                    $showEditMenuItemForm = true;
+                    $editMenuItem = $menuItem;
+                } else {
+                    $message = 'Menu item not found.';
+                }
                 break;
         }
     }
@@ -303,6 +317,61 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                     </div>
                 </div>
                 <?php endif; ?>
+                
+                <?php if (isset($showEditForm) && $showEditForm): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Edit Restaurant</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_restaurant">
+                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($editRestaurant['id']); ?>">
+                            <div class="mb-3">
+                                <label for="edit_name" class="form-label">Restaurant Name</label>
+                                <input type="text" class="form-control" id="edit_name" name="name" value="<?php echo htmlspecialchars($editRestaurant['name']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_description" class="form-label">Description</label>
+                                <textarea class="form-control" id="edit_description" name="description" rows="3" required><?php echo htmlspecialchars($editRestaurant['description']); ?></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_cuisine" class="form-label">Cuisine</label>
+                                <input type="text" class="form-control" id="edit_cuisine" name="cuisine" value="<?php echo htmlspecialchars($editRestaurant['cuisine']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_address" class="form-label">Address</label>
+                                <textarea class="form-control" id="edit_address" name="address" rows="2" required><?php echo htmlspecialchars($editRestaurant['address']); ?></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_phone" class="form-label">Phone</label>
+                                <input type="text" class="form-control" id="edit_phone" name="phone" value="<?php echo htmlspecialchars($editRestaurant['phone']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_price_range" class="form-label">Price Range</label>
+                                <select class="form-select" id="edit_price_range" name="price_range" required>
+                                    <option value="$" <?php echo $editRestaurant['price_range'] == '$' ? 'selected' : ''; ?>>$</option>
+                                    <option value="$$" <?php echo $editRestaurant['price_range'] == '$$' ? 'selected' : ''; ?>>$$</option>
+                                    <option value="$$$" <?php echo $editRestaurant['price_range'] == '$$$' ? 'selected' : ''; ?>>$$$</option>
+                                    <option value="$$$$" <?php echo $editRestaurant['price_range'] == '$$$$' ? 'selected' : ''; ?>>$$$$</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_seating_capacity" class="form-label">Seating Capacity</label>
+                                <input type="number" class="form-control" id="edit_seating_capacity" name="seating_capacity" min="0" value="<?php echo htmlspecialchars($editRestaurant['seating_capacity']); ?>">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_image" class="form-label">Image URL</label>
+                                <input type="text" class="form-control" id="edit_image" name="image" value="<?php echo htmlspecialchars($editRestaurant['image'] ?? ''); ?>">
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Update Restaurant</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Restaurants List -->
                 <div class="row">
@@ -390,6 +459,56 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="restaurants.php?restaurant_id=<?php echo $_GET['restaurant_id']; ?>" class="btn btn-secondary">Cancel</a>
                                 <button type="submit" class="btn btn-primary">Add Menu Item</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (isset($showEditMenuItemForm) && $showEditMenuItemForm): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Edit Menu Item</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_menu_item">
+                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($editMenuItem['id']); ?>">
+                            <input type="hidden" name="restaurant_id" value="<?php echo htmlspecialchars($editMenuItem['restaurant_id']); ?>">
+                            <div class="mb-3">
+                                <label for="edit_menu_name" class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="edit_menu_name" name="name" value="<?php echo htmlspecialchars($editMenuItem['name']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_menu_description" class="form-label">Description</label>
+                                <textarea class="form-control" id="edit_menu_description" name="description" rows="2" required><?php echo htmlspecialchars($editMenuItem['description']); ?></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_price" class="form-label">Price</label>
+                                <input type="number" class="form-control" id="edit_price" name="price" step="0.01" min="0" value="<?php echo htmlspecialchars($editMenuItem['price']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_category" class="form-label">Category</label>
+                                <select class="form-select" id="edit_category" name="category" required>
+                                    <option value="appetizer" <?php echo $editMenuItem['category'] == 'appetizer' ? 'selected' : ''; ?>>Appetizer</option>
+                                    <option value="main" <?php echo $editMenuItem['category'] == 'main' ? 'selected' : ''; ?>>Main Course</option>
+                                    <option value="dessert" <?php echo $editMenuItem['category'] == 'dessert' ? 'selected' : ''; ?>>Dessert</option>
+                                    <option value="beverage" <?php echo $editMenuItem['category'] == 'beverage' ? 'selected' : ''; ?>>Beverage</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_menu_image" class="form-label">Image URL</label>
+                                <input type="text" class="form-control" id="edit_menu_image" name="image" value="<?php echo htmlspecialchars($editMenuItem['image'] ?? ''); ?>">
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_available" name="available" value="1" <?php echo $editMenuItem['available'] ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="edit_available">Available</label>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="restaurants.php?restaurant_id=<?php echo htmlspecialchars($editMenuItem['restaurant_id']); ?>" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Update Menu Item</button>
                             </div>
                         </form>
                     </div>

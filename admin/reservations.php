@@ -287,6 +287,35 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add confirmation dialog before deleting reservations
+        document.addEventListener('DOMContentLoaded', function() {
+            var deleteButtons = document.querySelectorAll('button[type="submit"][class*="btn-outline-danger"]');
+            
+            deleteButtons.forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    // Get customer and restaurant names from the row
+                    var row = this.closest('tr');
+                    var customerName = row.querySelector('td strong').textContent;
+                    var restaurantName = row.querySelector('td:nth-child(2)').textContent;
+                    var reservationDate = row.querySelector('td:nth-child(3)').textContent.split('\n')[0];
+                    
+                    if (!confirm('Are you sure you want to delete the reservation for "' + customerName + '" at "' + restaurantName + '" for ' + reservationDate + '?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+            
+            // Auto-submit when filters change
+            document.getElementById('restaurant_filter').addEventListener('change', function() {
+                this.form.submit();
+            });
+            
+            document.getElementById('status_filter').addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+    </script>
 </body>
 </html>
 
