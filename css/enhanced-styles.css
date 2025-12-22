@@ -23,8 +23,8 @@
 
 .fab:hover {
   background-color: var(--bs-primary-hover);
-  transform: scale(1.1);
-  box-shadow: var(--bs-shadow-lg);
+  transform: scale(1.15);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.25);
 }
 
 /* Progress Bar */
@@ -466,8 +466,8 @@
 
 .fab:hover {
   background-color: var(--bs-primary-hover);
-  transform: scale(1.1);
-  box-shadow: var(--bs-shadow-lg);
+  transform: scale(1.15);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.25);
 }
 
 /* Progress Bar */

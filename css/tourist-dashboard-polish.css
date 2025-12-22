@@ -1,0 +1,171 @@
+/* Tourist Dashboard UI Polish */
+
+/* Navbar styling */
+.navbar {
+  background-color: var(--bs-primary);
+  box-shadow: var(--bs-shadow-sm);
+  padding: 0.5rem 1rem;
+}
+
+.navbar-brand {
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+/* Active nav link indicator */
+.navbar-nav .nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 3px;
+  background-color: white;
+  border-radius: 2px;
+}
+
+/* Navbar badge styling */
+.navbar .badge {
+  background-color: white;
+  color: var(--bs-primary);
+  font-size: 0.75em;
+  padding: 0.25em 0.5em;
+  border-radius: 0.375rem;
+  font-weight: 600;
+}
+
+/* Navbar text */
+.navbar-text {
+  color: rgba(255, 255, 255, 0.85);
+  display: inline-block;
+  padding: 0.5rem;
+}
+
+.navbar-text .badge {
+  background-color: white;
+  color: var(--bs-primary);
+  font-size: 0.75em;
+  padding: 0.25em 0.5em;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+/* Clamp restaurant card descriptions to 3 lines */
+.card-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Update pagination focus shadows to use warm primary */
+.page-link:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Responsive adjustments */
+@media (min-width: 992px) {
+  .navbar-nav {
+    flex-direction: row;
+  }
+  
+  .navbar-nav .nav-item {
+    margin-right: 1rem;
+  }
+  
+  .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .navbar-nav .nav-link:hover,
+  .navbar-nav .nav-link:focus {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .navbar-nav .nav-link.active {
+    color: white;
+    background-color: var(--bs-primary-hover);
+    position: relative;
+  }
+  
+  /* Right-side user info styling */
+  .navbar-nav.ms-auto {
+    margin-left: auto !important;
+  }
+  
+  .navbar-nav.ms-auto .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.5rem 1rem;
+  }
+  
+  .navbar-nav.ms-auto .nav-link:hover,
+  .navbar-nav.ms-auto .nav-link:focus {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .navbar-collapse {
+    margin-top: 0;
+  }
+  
+  .navbar-nav.d-lg-none {
+    display: none !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .navbar-nav {
+    flex-direction: column;
+    margin-top: 1rem;
+  }
+  
+  .navbar-nav .nav-item {
+    margin-right: 0;
+    margin-bottom: 0.25rem;
+  }
+  
+  .navbar-nav .nav-link {
+    padding: 0.75rem 1rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  
+  .navbar-nav .nav-link:hover,
+  .navbar-nav .nav-link:focus {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .navbar-nav .nav-link.active {
+    color: white;
+    background-color: var(--bs-primary-hover);
+    position: relative;
+  }
+  
+  .navbar-nav .nav-link.active::after {
+    display: none;
+  }
+  
+  .navbar-collapse {
+    margin-top: 1rem;
+  }
+  
+  .navbar-text {
+    margin-bottom: 1rem;
+  }
+  
+  .navbar-nav.d-lg-none .navbar-text {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0;
+  }
+  
+  .navbar-nav.ms-auto {
+    margin-left: 0 !important;
+  }
+}
