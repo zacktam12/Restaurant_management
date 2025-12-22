@@ -722,6 +722,30 @@ domReady(function() {
     // Initialize dark mode
     initDarkMode();
     
+    // Navbar toggle functionality
+    domReady(function() {
+        var navbarToggles = document.querySelectorAll('.navbar-toggler');
+        navbarToggles.forEach(function(toggle) {
+            toggle.addEventListener('click', function() {
+                var target = this.getAttribute('data-bs-target') || this.getAttribute('data-target');
+                if (target) {
+                    var navbarCollapse = document.querySelector(target);
+                    if (navbarCollapse) {
+                        if (navbarCollapse.classList.contains('show')) {
+                            navbarCollapse.classList.remove('show');
+                            this.classList.remove('collapsed');
+                            this.setAttribute('aria-expanded', 'false');
+                        } else {
+                            navbarCollapse.classList.add('show');
+                            this.classList.add('collapsed');
+                            this.setAttribute('aria-expanded', 'true');
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
     // Add loading spinner CSS
     var spinnerStyle = document.createElement('style');
     spinnerStyle.textContent = `
@@ -785,6 +809,21 @@ domReady(function() {
         .dark-mode .btn-outline-primary {
             color: #0d6efd;
             border-color: #0d6efd;
+        }
+        
+        /* Ensure navbar is visible */
+        .navbar-collapse.show {
+            display: block !important;
+        }
+        
+        .navbar-collapse:not(.show) {
+            display: none !important;
+        }
+        
+        @media (min-width: 992px) {
+            .navbar-collapse {
+                display: flex !important;
+            }
         }
     `;
     document.head.appendChild(spinnerStyle);
