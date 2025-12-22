@@ -31,10 +31,10 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
             border-radius: 0.25rem;
             color: white;
         }
-        .method-get { background-color: #28a745; }
-        .method-post { background-color: #007bff; }
-        .method-put { background-color: #ffc107; color: black; }
-        .method-delete { background-color: #dc3545; }
+        .method-get { background-color: var(--bs-success); }
+        .method-post { background-color: var(--bs-primary); }
+        .method-put { background-color: var(--bs-warning); color: black; }
+        .method-delete { background-color: var(--bs-danger); }
         pre {
             background-color: #f8f9fa;
             padding: 1rem;

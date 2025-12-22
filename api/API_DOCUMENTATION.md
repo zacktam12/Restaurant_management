@@ -418,5 +418,4 @@ API requests are limited to 1000 requests per hour per API key.
 
 ## Version Information
 - **API Version**: v1.0
-- **Last Updated**: December 21, 2025
 - **Contact**: Group 7 - Restaurant Management Team
