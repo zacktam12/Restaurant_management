@@ -73,16 +73,21 @@ foreach ($allRestaurants as $restaurant) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tourist Dashboard - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/tourist-dashboard-polish.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar">
+    <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="index.php">
                 Tourist Portal
             </a>
-            <div class="navbar-collapse">
-                <ul class="navbar-nav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link active" href="index.php">
                             Restaurants
@@ -104,8 +109,15 @@ foreach ($allRestaurants as $restaurant) {
                         </a>
                     </li>
                 </ul>
-                <div class="navbar-nav">
-                    <span class="navbar-text">
+                <div class="navbar-nav ms-auto align-items-center d-none d-lg-flex">
+                    <span class="navbar-text me-3">
+                        Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
+                        <span class="badge"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
+                    </span>
+                    <a class="btn btn-outline-light" href="../logout.php">Logout</a>
+                </div>
+                <div class="navbar-nav d-lg-none mt-3 pt-3 border-top">
+                    <span class="navbar-text mb-2">
                         Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
                         <span class="badge"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
                     </span>
