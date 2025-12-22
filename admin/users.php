@@ -55,9 +55,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 break;
                 
-            case 'edit_user':
-                $message = 'Edit functionality would be implemented here for user ID: ' . $_POST['id'];
-                $messageType = 'info';
+            case 'update_user':
+                $id = $_POST['id'] ?? '';
+                $name = $_POST['name'] ?? '';
+                $email = $_POST['email'] ?? '';
+                $role = $_POST['role'] ?? '';
+                $phone = $_POST['phone'] ?? '';
+                $professional_details = $_POST['professional_details'] ?? '';
+                
+                if (empty($id) || empty($name) || empty($email) || empty($role)) {
+                    $message = 'Please fill in all required fields.';
+                    $messageType = 'danger';
+                } else {
+                    $result = $userManager->updateUser($id, $name, $email, $role, $phone, $professional_details);
+                    
+                    if ($result['success']) {
+                        $message = 'User updated successfully!';
+                        $messageType = 'success';
+                        // Clear edit mode
+                        if (isset($_GET['edit_user'])) {
+                            unset($_GET['edit_user']);
+                            // Optional: redirect to remove query param
+                            // header("Location: users.php?msg=updated");
+                        }
+                    } else {
+                        $message = $result['message'];
+                        $messageType = 'danger';
+                    }
+                }
                 break;
                 
             case 'delete_user':
@@ -66,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
         }
     }
-} else if (isset($_GET['confirm_delete'])) {
+} elseif (isset($_GET['confirm_delete'])) {
     // Handle delete confirmation through GET parameters
     $userId = $_GET['confirm_delete'];
     
@@ -77,10 +102,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $messageType = 'warning';
         $showDeleteConfirmation = true;
     }
+}
+
+// Handle edit request
+$editUser = null;
+if (isset($_GET['edit_user'])) {
+    $editUserId = $_GET['edit_user'];
+    $editUser = $userManager->getUserById($editUserId);
+    if (!$editUser) {
+        $message = 'User not found.';
+        $messageType = 'danger';
+    }
 } else if (isset($_GET['delete_confirmed']) && isset($_GET['id'])) {
     // Handle confirmed delete
-    $message = 'Delete functionality would be implemented here for user ID: ' . $_GET['id'];
-    $messageType = 'info';
+    $result = $userManager->deleteUser($_GET['id']);
+    if ($result['success']) {
+        $message = 'User deleted successfully.';
+        $messageType = 'success';
+    } else {
+        $message = $result['message'];
+        $messageType = 'danger';
+    }
 }
 
 $users = $userManager->getAllUsers();
@@ -93,13 +135,17 @@ $users = $userManager->getAllUsers();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
+    <link href="../css/admin-layout.css" rel="stylesheet">
+    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="../admin/index.php">
-                <i class="bi bi-restaurant"></i> Restaurant Manager
+                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -111,52 +157,65 @@ $users = $userManager->getAllUsers();
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/index.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="../admin/users.php">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/restaurants.php">
-                                <i class="bi bi-shop"></i> Restaurants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reservations.php">
-                                <i class="bi bi-calendar-check"></i> Reservations
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">
+                        <span class="custom-icon icon-speedometer2"></span> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="users.php">
+                        <span class="custom-icon icon-people"></span> User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="restaurants.php">
+                        <span class="custom-icon icon-shop"></span> Restaurants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reservations.php">
+                        <span class="custom-icon icon-calendar-check"></span> Reservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="services.php">
+                        <span class="custom-icon icon-gear"></span> External Services
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reports.php">
+                        <span class="custom-icon icon-graph-up"></span> Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="api_keys.php">
+                        <span class="custom-icon icon-key"></span> API Keys
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="service_registry.php">
+                        <span class="custom-icon icon-diagram-3"></span> Service Registry
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">User Management</h1>
-                    <form method="GET">
-                        <input type="hidden" name="show_add_form" value="1">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-lg"></i> Add New User
-                        </button>
-                    </form>
-                </div>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">User Management</h1>
+            <form method="GET">
+                <input type="hidden" name="show_add_form" value="1">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> Add New User
+                </button>
+            </form>
+        </div>
                 
                 <?php if (isset($message)): ?>
                 <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
@@ -228,6 +287,51 @@ $users = $userManager->getAllUsers();
                 </div>
                 <?php endif; ?>
 
+                <!-- Edit User Form -->
+                <?php if ($editUser): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Edit User</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="users.php">
+                            <input type="hidden" name="action" value="update_user">
+                            <input type="hidden" name="id" value="<?php echo $editUser['id']; ?>">
+                            
+                            <div class="mb-3">
+                                <label for="edit_name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="edit_name" name="name" value="<?php echo htmlspecialchars($editUser['name']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="edit_email" name="email" value="<?php echo htmlspecialchars($editUser['email']); ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_role" class="form-label">Role</label>
+                                <select class="form-select" id="edit_role" name="role" required>
+                                    <option value="customer" <?php echo $editUser['role'] == 'customer' ? 'selected' : ''; ?>>Customer</option>
+                                    <option value="tourist" <?php echo $editUser['role'] == 'tourist' ? 'selected' : ''; ?>>Tourist</option>
+                                    <option value="manager" <?php echo $editUser['role'] == 'manager' ? 'selected' : ''; ?>>Manager</option>
+                                    <option value="admin" <?php echo $editUser['role'] == 'admin' ? 'selected' : ''; ?>>Admin</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_phone" class="form-label">Phone</label>
+                                <input type="text" class="form-control" id="edit_phone" name="phone" value="<?php echo htmlspecialchars($editUser['phone'] ?? ''); ?>">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_professional_details" class="form-label">Professional Details</label>
+                                <textarea class="form-control" id="edit_professional_details" name="professional_details" rows="3"><?php echo htmlspecialchars($editUser['professional_details'] ?? ''); ?></textarea>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="users.php" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Update User</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- Users Table -->
                 <div class="card">
                     <div class="card-body">
@@ -261,19 +365,23 @@ $users = $userManager->getAllUsers();
                                         <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
                                         <td><?php echo date('M j, Y', strtotime($user['created_at'])); ?></td>
                                         <td>
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="edit_user">
-                                                <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
-                                            </form>
-                                            <form method="GET" class="d-inline">
-                                                <input type="hidden" name="confirm_delete" value="<?php echo $user['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="users.php?edit_user=<?php echo $user['id']; ?>">
+                                                            <i class="bi bi-pencil me-2"></i>Edit
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="users.php?confirm_delete=<?php echo $user['id']; ?>">
+                                                            <i class="bi bi-trash me-2"></i>Delete
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -283,8 +391,6 @@ $users = $userManager->getAllUsers();
                     </div>
                 </div>
             </main>
-        </div>
-    </div>
 
     <script src="../js/app.js"></script>
 </body>

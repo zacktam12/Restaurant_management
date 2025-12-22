@@ -70,13 +70,8 @@ for ($i = 5; $i >= 0; $i--) {
     $startDate = date('Y-m-01', strtotime("-$i months"));
     $endDate = date('Y-m-t', strtotime("-$i months"));
     
-    $query = "SELECT COUNT(*) as count FROM reservations WHERE date BETWEEN ? AND ?";
-    $params = [$startDate, $endDate];
-    $paramTypes = "ss";
-    
     try {
-        $result = $reservationManager->db->select($query, $params, $paramTypes);
-        $monthlyReservations[$month] = $result[0]['count'] ?? 0;
+        $monthlyReservations[$month] = $reservationManager->getReservationCountByDateRange($startDate, $endDate);
     } catch (Exception $e) {
         $monthlyReservations[$month] = 0;
     }
@@ -84,14 +79,8 @@ for ($i = 5; $i >= 0; $i--) {
 
 // Get top restaurants by reservations
 $topRestaurants = [];
-$query = "SELECT r.name, COUNT(res.id) as reservation_count 
-          FROM restaurants r 
-          LEFT JOIN reservations res ON r.id = res.restaurant_id 
-          GROUP BY r.id, r.name 
-          ORDER BY reservation_count DESC 
-          LIMIT 5";
 try {
-    $topRestaurants = $restaurantManager->db->select($query);
+    $topRestaurants = $restaurantManager->getTopRestaurantsByReservations(5);
 } catch (Exception $e) {
     $topRestaurants = [];
 }
@@ -103,13 +92,8 @@ for ($i = 5; $i >= 0; $i--) {
     $startDate = date('Y-m-01', strtotime("-$i months"));
     $endDate = date('Y-m-t', strtotime("-$i months"));
     
-    $query = "SELECT COUNT(*) as count FROM users WHERE created_at BETWEEN ? AND ?";
-    $params = [$startDate, $endDate];
-    $paramTypes = "ss";
-    
     try {
-        $result = $userManager->db->select($query, $params, $paramTypes);
-        $userRegistrationTrends[$month] = $result[0]['count'] ?? 0;
+        $userRegistrationTrends[$month] = $userManager->getUserCountByDateRange($startDate, $endDate);
     } catch (Exception $e) {
         $userRegistrationTrends[$month] = 0;
     }
@@ -117,20 +101,16 @@ for ($i = 5; $i >= 0; $i--) {
 
 // Get user roles distribution
 $userRoles = [
-    'admin' => count($userManager->db->select("SELECT * FROM users WHERE role = 'admin'")),
-    'manager' => count($userManager->db->select("SELECT * FROM users WHERE role = 'manager'")),
-    'customer' => count($userManager->db->select("SELECT * FROM users WHERE role = 'customer'")),
-    'tourist' => count($userManager->db->select("SELECT * FROM users WHERE role = 'tourist'"))
+    'admin' => $userManager->getUserCountByRole('admin'),
+    'manager' => $userManager->getUserCountByRole('manager'),
+    'customer' => $userManager->getUserCountByRole('customer'),
+    'tourist' => $userManager->getUserCountByRole('tourist')
 ];
 
 // Get average restaurant ratings
 $avgRatings = [];
-$query = "SELECT cuisine, AVG(rating) as avg_rating, COUNT(*) as restaurant_count 
-          FROM restaurants 
-          GROUP BY cuisine 
-          ORDER BY avg_rating DESC";
 try {
-    $avgRatings = $restaurantManager->db->select($query);
+    $avgRatings = $restaurantManager->getRestaurantRatingsByCuisine();
 } catch (Exception $e) {
     $avgRatings = [];
 }
@@ -143,6 +123,10 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
+    <link href="../css/admin-layout.css" rel="stylesheet">
+    <link href="../css/admin-icons.css" rel="stylesheet">
 
 </head>
 <body>
@@ -150,7 +134,7 @@ try {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="../admin/index.php">
-                <i class="bi bi-restaurant"></i> Restaurant Manager
+                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -162,53 +146,56 @@ try {
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/index.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/users.php">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/restaurants.php">
-                                <i class="bi bi-shop"></i> Restaurants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reservations.php">
-                                <i class="bi bi-calendar-check"></i> Reservations
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/api_keys.php">
-                                <i class="bi bi-key"></i> API Keys
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/service_registry.php">
-                                <i class="bi bi-diagram-3"></i> Service Registry
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/index.php">
+                        <span class="custom-icon icon-speedometer2"></span> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/users.php">
+                        <span class="custom-icon icon-people"></span> User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/restaurants.php">
+                        <span class="custom-icon icon-shop"></span> Restaurants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/reservations.php">
+                        <span class="custom-icon icon-calendar-check"></span> Reservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/services.php">
+                        <span class="custom-icon icon-gear"></span> External Services
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="../admin/reports.php">
+                        <span class="custom-icon icon-graph-up"></span> Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/api_keys.php">
+                        <span class="custom-icon icon-key"></span> API Keys
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/service_registry.php">
+                        <span class="custom-icon icon-diagram-3"></span> Service Registry
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Main Content -->
+    <main class="main-content">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Reports & Analytics</h1>
                 </div>
@@ -253,366 +240,402 @@ try {
                     </div>
                 </div>
 
-                <!-- Charts Section -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Reservations by Status</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Status</th>
-                                                <th>Count</th>
-                                                <th>Percentage</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php 
-                                            $totalCount = array_sum($statusCounts);
-                                            $statuses = ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled', 'completed' => 'Completed'];
-                                            foreach ($statuses as $key => $label): 
-                                                $count = $statusCounts[$key];
-                                                $percentage = $totalCount > 0 ? round(($count / $totalCount) * 100, 1) : 0;
-                                            ?>
-                                            <tr>
-                                                <td><?php echo $label; ?></td>
-                                                <td><?php echo $count; ?></td>
-                                                <td><?php echo $percentage; ?>%</td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Bookings by Service Type</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Service Type</th>
-                                                <th>Bookings</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Tours</td>
-                                                <td><?php echo $serviceTypeCounts['tour']; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Hotels</td>
-                                                <td><?php echo $serviceTypeCounts['hotel']; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Taxis</td>
-                                                <td><?php echo $serviceTypeCounts['taxi']; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Restaurants</td>
-                                                <td><?php echo $serviceTypeCounts['restaurant']; ?></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Tabs Navigation -->
+                <ul class="nav nav-tabs mb-4" id="reportsTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
+                            <span class="custom-icon icon-speedometer2 me-2"></span>Overview
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="restaurants-tab" data-bs-toggle="tab" data-bs-target="#restaurants" type="button" role="tab" aria-controls="restaurants" aria-selected="false">
+                            <span class="custom-icon icon-shop me-2"></span>Restaurant Visuals
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="false">
+                            <span class="custom-icon icon-people me-2"></span>User Stats
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab" aria-controls="activity" aria-selected="false">
+                            <span class="custom-icon icon-calendar-check me-2"></span>Recent Activity
+                        </button>
+                    </li>
+                </ul>
 
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Reservations by Restaurant</h5>
+                <!-- Tabs Content -->
+                <div class="tab-content" id="reportsTabContent">
+                    
+                    <!-- Overview Tab -->
+                    <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Reservations by Status</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Status</th>
+                                                        <th>Count</th>
+                                                        <th>Percentage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php 
+                                                    $totalCount = array_sum($statusCounts);
+                                                    $statuses = ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled', 'completed' => 'Completed'];
+                                                    foreach ($statuses as $key => $label): 
+                                                        $count = $statusCounts[$key];
+                                                        $percentage = $totalCount > 0 ? round(($count / $totalCount) * 100, 1) : 0;
+                                                    ?>
+                                                    <tr>
+                                                        <td><?php echo $label; ?></td>
+                                                        <td><?php echo $count; ?></td>
+                                                        <td><?php echo $percentage; ?>%</td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Restaurant</th>
-                                                <th>Reservations</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($reservationsByRestaurant as $name => $count): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($name); ?></td>
-                                                <td><?php echo $count; ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Bookings by Service Type</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Service Type</th>
+                                                        <th>Bookings</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>Tours</td>
+                                                        <td><?php echo $serviceTypeCounts['tour']; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Hotels</td>
+                                                        <td><?php echo $serviceTypeCounts['hotel']; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Taxis</td>
+                                                        <td><?php echo $serviceTypeCounts['taxi']; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Restaurants</td>
+                                                        <td><?php echo $serviceTypeCounts['restaurant']; ?></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Monthly Reservation Trends</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Month</th>
+                                                        <th>Reservations</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($monthlyReservations as $month => $count): ?>
+                                                    <tr>
+                                                        <td><?php echo $month; ?></td>
+                                                        <td><?php echo $count; ?></td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Enhanced Analytics Section -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Monthly Reservation Trends</h5>
+                    <!-- Restaurants Tab -->
+                    <div class="tab-pane fade" id="restaurants" role="tabpanel" aria-labelledby="restaurants-tab">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Top Restaurants by Reservations</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Restaurant</th>
+                                                        <th>Reservations</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($topRestaurants as $restaurant): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($restaurant['name']); ?></td>
+                                                        <td><?php echo $restaurant['reservation_count']; ?></td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Month</th>
-                                                <th>Reservations</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($monthlyReservations as $month => $count): ?>
-                                            <tr>
-                                                <td><?php echo $month; ?></td>
-                                                <td><?php echo $count; ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Average Ratings by Cuisine</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Cuisine</th>
+                                                        <th>Average Rating</th>
+                                                        <th>Restaurants</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($avgRatings as $rating): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($rating['cuisine']); ?></td>
+                                                        <td><?php echo number_format($rating['avg_rating'], 2); ?>/5.0</td>
+                                                        <td><?php echo htmlspecialchars($rating['restaurant_count']); ?></td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">User Registration Trends</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Month</th>
-                                                <th>New Users</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($userRegistrationTrends as $month => $count): ?>
-                                            <tr>
-                                                <td><?php echo $month; ?></td>
-                                                <td><?php echo $count; ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Top Restaurants by Reservations</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Restaurant</th>
-                                                <th>Reservations</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($topRestaurants as $restaurant): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($restaurant['name']); ?></td>
-                                                <td><?php echo $restaurant['reservation_count']; ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Total Reservations by Restaurant</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Restaurant</th>
+                                                        <th>Reservations</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($reservationsByRestaurant as $name => $count): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($name); ?></td>
+                                                        <td><?php echo $count; ?></td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">User Roles Distribution</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>User Role</th>
-                                                <th>Count</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Admin</td>
-                                                <td><?php echo $userRoles['admin']; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Manager</td>
-                                                <td><?php echo $userRoles['manager']; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Customer</td>
-                                                <td><?php echo $userRoles['customer']; ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Tourist</td>
-                                                <td><?php echo $userRoles['tourist']; ?></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Average Restaurant Ratings by Cuisine</h5>
+                    <!-- Users Tab -->
+                    <div class="tab-pane fade" id="users" role="tabpanel" aria-labelledby="users-tab">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">User Registration Trends</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Month</th>
+                                                        <th>New Users</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($userRegistrationTrends as $month => $count): ?>
+                                                    <tr>
+                                                        <td><?php echo $month; ?></td>
+                                                        <td><?php echo $count; ?></td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Cuisine</th>
-                                                <th>Average Rating</th>
-                                                <th>Number of Restaurants</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($avgRatings as $rating): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($rating['cuisine']); ?></td>
-                                                <td><?php echo number_format($rating['avg_rating'], 2); ?>/5.0</td>
-                                                <td><?php echo htmlspecialchars($rating['restaurant_count']); ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">User Roles Distribution</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>User Role</th>
+                                                        <th>Count</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>Admin</td>
+                                                        <td><?php echo $userRoles['admin']; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Manager</td>
+                                                        <td><?php echo $userRoles['manager']; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Customer</td>
+                                                        <td><?php echo $userRoles['customer']; ?></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Tourist</td>
+                                                        <td><?php echo $userRoles['tourist']; ?></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Recent Activity Tables -->
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Recent Reservations</h5>
+                    <!-- Activity Tab -->
+                    <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Recent Reservations</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Customer</th>
+                                                        <th>Restaurant</th>
+                                                        <th>Date</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php if (empty($recentReservations)): ?>
+                                                    <tr>
+                                                        <td colspan="4" class="text-center">No reservations found</td>
+                                                    </tr>
+                                                    <?php else: ?>
+                                                    <?php foreach ($recentReservations as $reservation): 
+                                                        $restaurant = $restaurantManager->getRestaurantById($reservation['restaurant_id']);
+                                                        $restaurantName = $restaurant ? $restaurant['name'] : 'Unknown';
+                                                    ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($reservation['customer_name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($restaurantName); ?></td>
+                                                        <td><?php echo date('M j, Y', strtotime($reservation['date'])); ?></td>
+                                                        <td>
+                                                            <span class="badge bg-<?php 
+                                                                echo $reservation['status'] == 'confirmed' ? 'success' : 
+                                                                     ($reservation['status'] == 'pending' ? 'warning' : 
+                                                                     ($reservation['status'] == 'cancelled' ? 'danger' : 'secondary')); ?>">
+                                                                <?php echo ucfirst($reservation['status']); ?>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                    <?php endif; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Customer</th>
-                                                <th>Restaurant</th>
-                                                <th>Date</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (empty($recentReservations)): ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center">No reservations found</td>
-                                            </tr>
-                                            <?php else: ?>
-                                            <?php foreach ($recentReservations as $reservation): 
-                                                $restaurant = $restaurantManager->getRestaurantById($reservation['restaurant_id']);
-                                                $restaurantName = $restaurant ? $restaurant['name'] : 'Unknown';
-                                            ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($reservation['customer_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($restaurantName); ?></td>
-                                                <td><?php echo date('M j, Y', strtotime($reservation['date'])); ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?php 
-                                                        echo $reservation['status'] == 'confirmed' ? 'success' : 
-                                                             ($reservation['status'] == 'pending' ? 'warning' : 
-                                                             ($reservation['status'] == 'cancelled' ? 'danger' : 'secondary')); ?>">
-                                                        <?php echo ucfirst($reservation['status']); ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Recent Bookings</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Customer</th>
+                                                        <th>Service Type</th>
+                                                        <th>Date</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php if (empty($recentBookings)): ?>
+                                                    <tr>
+                                                        <td colspan="4" class="text-center">No bookings found</td>
+                                                    </tr>
+                                                    <?php else: ?>
+                                                    <?php foreach ($recentBookings as $booking): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($booking['customer_id']); ?></td>
+                                                        <td><?php echo ucfirst($booking['service_type']); ?></td>
+                                                        <td><?php echo $booking['date'] ? date('M j, Y', strtotime($booking['date'])) : 'N/A'; ?></td>
+                                                        <td>
+                                                            <span class="badge bg-<?php 
+                                                                echo $booking['status'] == 'confirmed' ? 'success' : 
+                                                                     ($booking['status'] == 'pending' ? 'warning' : 
+                                                                     ($booking['status'] == 'cancelled' ? 'danger' : 'secondary')); ?>">
+                                                                <?php echo ucfirst($booking['status']); ?>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                    <?php endif; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Recent Bookings</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Customer</th>
-                                                <th>Service Type</th>
-                                                <th>Date</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (empty($recentBookings)): ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center">No bookings found</td>
-                                            </tr>
-                                            <?php else: ?>
-                                            <?php foreach ($recentBookings as $booking): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($booking['customer_id']); ?></td>
-                                                <td><?php echo ucfirst($booking['service_type']); ?></td>
-                                                <td><?php echo $booking['date'] ? date('M j, Y', strtotime($booking['date'])) : 'N/A'; ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?php 
-                                                        echo $booking['status'] == 'confirmed' ? 'success' : 
-                                                             ($booking['status'] == 'pending' ? 'warning' : 
-                                                             ($booking['status'] == 'cancelled' ? 'danger' : 'secondary')); ?>">
-                                                        <?php echo ucfirst($booking['status']); ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
             </main>
-        </div>
-    </div>
 
     <script src="../js/app.js"></script>
 </body>

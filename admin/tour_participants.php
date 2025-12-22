@@ -57,13 +57,17 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tour Participants - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
+    <link href="../css/admin-layout.css" rel="stylesheet">
+    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <i class="bi bi-restaurant"></i> Restaurant Manager
+                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -75,53 +79,61 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="users.php">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="restaurants.php">
-                                <i class="bi bi-shop"></i> Restaurants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="reservations.php">
-                                <i class="bi bi-calendar-check"></i> Reservations
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="services.php">
-                                <i class="bi bi-gear"></i> External Services
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="tour_participants.php">
-                                <i class="bi bi-people-fill"></i> Tour Participants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">
+                        <span class="custom-icon icon-speedometer2"></span> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="users.php">
+                        <span class="custom-icon icon-people"></span> User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="restaurants.php">
+                        <span class="custom-icon icon-shop"></span> Restaurants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reservations.php">
+                        <span class="custom-icon icon-calendar-check"></span> Reservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="services.php">
+                        <span class="custom-icon icon-gear"></span> External Services
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="tour_participants.php">
+                        <span class="custom-icon icon-people-fill"></span> Tour Participants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reports.php">
+                        <span class="custom-icon icon-graph-up"></span> Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="api_keys.php">
+                        <span class="custom-icon icon-key"></span> API Keys
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="service_registry.php">
+                        <span class="custom-icon icon-diagram-3"></span> Service Registry
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Main Content -->
+    <main class="main-content">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Tour Participants</h1>
                 </div>
@@ -208,8 +220,6 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                     </div>
                 </div>
             </main>
-        </div>
-    </div>
 
     <!-- Participant Details Display -->
     <?php if ($participantDetails): ?>

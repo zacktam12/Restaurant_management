@@ -36,11 +36,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $message = $result['message'];
                 break;
                 
+            case 'update_reservation':
+                $id = $_POST['id'] ?? '';
+                $date = $_POST['date'] ?? '';
+                $time = $_POST['time'] ?? '';
+                $guests = $_POST['guests'] ?? '';
+                $status = $_POST['status'] ?? '';
+                $special_requests = $_POST['special_requests'] ?? '';
+                
+                if (empty($id) || empty($date) || empty($time) || empty($guests) || empty($status)) {
+                    $message = 'Please fill in all required fields.';
+                    $messageType = 'danger';
+                } else {
+                    $result = $reservationManager->updateReservation($id, $date, $time, $guests, $status, $special_requests);
+                    
+                    if ($result['success']) {
+                        $message = 'Reservation updated successfully!';
+                        $messageType = 'success';
+                        // Clear edit mode
+                        if (isset($_GET['edit_reservation'])) {
+                            unset($_GET['edit_reservation']);
+                        }
+                    } else {
+                        $message = $result['message'];
+                        $messageType = 'danger';
+                    }
+                }
+                break;
+
             case 'delete_reservation':
                 $result = $reservationManager->deleteReservation($_POST['id']);
                 $message = $result['message'];
                 break;
         }
+    }
+}
+
+// Handle edit request
+$editReservation = null;
+if (isset($_GET['edit_reservation'])) {
+    $editReservationId = $_GET['edit_reservation'];
+    $editReservation = $reservationManager->getReservationById($editReservationId);
+    if (!$editReservation) {
+        $message = 'Reservation not found.';
+        $messageType = 'danger';
     }
 } else if (isset($_GET['confirm_delete'])) {
     // Handle delete confirmation through GET parameters
@@ -90,13 +129,17 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservation Management - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
+    <link href="../css/admin-layout.css" rel="stylesheet">
+    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="../admin/index.php">
-                <i class="bi bi-restaurant"></i> Restaurant Manager
+                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -108,43 +151,56 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/index.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/users.php">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/restaurants.php">
-                                <i class="bi bi-shop"></i> Restaurants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="../admin/reservations.php">
-                                <i class="bi bi-calendar-check"></i> Reservations
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/index.php">
+                        <span class="custom-icon icon-speedometer2"></span> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/users.php">
+                        <span class="custom-icon icon-people"></span> User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/restaurants.php">
+                        <span class="custom-icon icon-shop"></span> Restaurants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="../admin/reservations.php">
+                        <span class="custom-icon icon-calendar-check"></span> Reservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/services.php">
+                        <span class="custom-icon icon-gear"></span> External Services
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/reports.php">
+                        <span class="custom-icon icon-graph-up"></span> Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/api_keys.php">
+                        <span class="custom-icon icon-key"></span> API Keys
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/service_registry.php">
+                        <span class="custom-icon icon-diagram-3"></span> Service Registry
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Main Content -->
+    <main class="main-content">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Reservation Management</h1>
                 </div>
@@ -167,6 +223,63 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                             <input type="hidden" name="delete_confirmed" value="1">
                             <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
                             <button type="submit" class="btn btn-danger">Yes, Delete Reservation</button>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Edit Reservation Form -->
+                <?php if ($editReservation): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Edit Reservation</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="reservations.php">
+                            <input type="hidden" name="action" value="update_reservation">
+                            <input type="hidden" name="id" value="<?php echo $editReservation['id']; ?>">
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Customer Name</label>
+                                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($editReservation['customer_name']); ?>" disabled>
+                                    <div class="form-text">Customer details cannot be changed here.</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <option value="pending" <?php echo $editReservation['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                        <option value="confirmed" <?php echo $editReservation['status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                        <option value="cancelled" <?php echo $editReservation['status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                        <option value="completed" <?php echo $editReservation['status'] == 'completed' ? 'selected' : ''; ?>>Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="date" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="date" name="date" value="<?php echo $editReservation['date']; ?>" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="time" class="form-label">Time</label>
+                                    <input type="time" class="form-control" id="time" name="time" value="<?php echo $editReservation['time']; ?>" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="guests" class="form-label">Guests</label>
+                                    <input type="number" class="form-control" id="guests" name="guests" value="<?php echo $editReservation['guests']; ?>" min="1" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="special_requests" class="form-label">Special Requests</label>
+                                <textarea class="form-control" id="special_requests" name="special_requests" rows="2"><?php echo htmlspecialchars($editReservation['special_requests'] ?? ''); ?></textarea>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="reservations.php" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Update Reservation</button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -255,23 +368,23 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                                         </td>
                                         <td><?php echo htmlspecialchars($reservation['special_requests'] ?? 'None'); ?></td>
                                         <td>
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="update_status">
-                                                <input type="hidden" name="id" value="<?php echo $reservation['id']; ?>">
-                                                <select name="status" class="form-select form-select-sm mb-1">
-                                                    <option value="pending" <?php echo $reservation['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
-                                                    <option value="confirmed" <?php echo $reservation['status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
-                                                    <option value="cancelled" <?php echo $reservation['status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
-                                                    <option value="completed" <?php echo $reservation['status'] == 'completed' ? 'selected' : ''; ?>>Completed</option>
-                                                </select>
-                                                <button type="submit" class="btn btn-sm btn-outline-primary mt-1">Update</button>
-                                            </form>
-                                            <form method="GET" class="d-inline">
-                                                <input type="hidden" name="confirm_delete" value="<?php echo $reservation['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bi bi-trash"></i>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
-                                            </form>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="reservations.php?edit_reservation=<?php echo $reservation['id']; ?>">
+                                                            <i class="bi bi-pencil me-2"></i>Edit
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="reservations.php?confirm_delete=<?php echo $reservation['id']; ?>">
+                                                            <i class="bi bi-trash me-2"></i>Delete
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -282,8 +395,6 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                     </div>
                 </div>
             </main>
-        </div>
-    </div>
 
     <script>
         // Add confirmation dialog before deleting reservations

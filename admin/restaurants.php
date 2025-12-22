@@ -173,13 +173,17 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restaurant Management - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
+    <link href="../css/admin-layout.css" rel="stylesheet">
+    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="../admin/index.php">
-                <i class="bi bi-restaurant"></i> Restaurant Manager
+                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -191,43 +195,56 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/index.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/users.php">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="../admin/restaurants.php">
-                                <i class="bi bi-shop"></i> Restaurants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reservations.php">
-                                <i class="bi bi-calendar-check"></i> Reservations
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">
+                        <span class="custom-icon icon-speedometer2"></span> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="users.php">
+                        <span class="custom-icon icon-people"></span> User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="restaurants.php">
+                        <span class="custom-icon icon-shop"></span> Restaurants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reservations.php">
+                        <span class="custom-icon icon-calendar-check"></span> Reservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="services.php">
+                        <span class="custom-icon icon-gear"></span> External Services
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="reports.php">
+                        <span class="custom-icon icon-graph-up"></span> Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="api_keys.php">
+                        <span class="custom-icon icon-key"></span> API Keys
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="service_registry.php">
+                        <span class="custom-icon icon-diagram-3"></span> Service Registry
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Main Content -->
+    <main class="main-content">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Restaurant Management</h1>
                     <form method="GET">
@@ -389,24 +406,35 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                                 </p>
                             </div>
                             <div class="card-footer">
-                                <div class="btn-group w-100" role="group">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <a href="?restaurant_id=<?php echo $restaurant['id']; ?>" class="btn btn-outline-primary btn-sm">
                                         <i class="bi bi-list"></i> Menu
                                     </a>
-                                    <form method="POST" class="d-inline">
-                                        <input type="hidden" name="action" value="edit_restaurant">
-                                        <input type="hidden" name="id" value="<?php echo $restaurant['id']; ?>">
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                            <i class="bi bi-pencil"></i> Edit
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots-vertical"></i>
                                         </button>
-                                    </form>
-                                    <form method="GET" class="d-inline">
-                                        <input type="hidden" name="confirm_delete" value="<?php echo $restaurant['id']; ?>">
-                                        <input type="hidden" name="type" value="restaurant">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
-                                    </form>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="action" value="edit_restaurant">
+                                                    <input type="hidden" name="id" value="<?php echo $restaurant['id']; ?>">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-pencil me-2"></i>Edit
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="GET" class="d-inline">
+                                                    <input type="hidden" name="confirm_delete" value="<?php echo $restaurant['id']; ?>">
+                                                    <input type="hidden" name="type" value="restaurant">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="bi bi-trash me-2"></i>Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -553,20 +581,31 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="edit_menu_item">
-                                                <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
-                                            </form>
-                                            <form method="GET" class="d-inline">
-                                                <input type="hidden" name="confirm_delete" value="<?php echo $item['id']; ?>">
-                                                <input type="hidden" name="type" value="menu_item">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <form method="POST" class="d-inline">
+                                                            <input type="hidden" name="action" value="edit_menu_item">
+                                                            <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bi bi-pencil me-2"></i>Edit
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="GET" class="d-inline">
+                                                            <input type="hidden" name="confirm_delete" value="<?php echo $item['id']; ?>">
+                                                            <input type="hidden" name="type" value="menu_item">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="bi bi-trash me-2"></i>Delete
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -577,8 +616,6 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                 </div>
                 <?php endif; ?>
             </main>
-        </div>
-    </div>
 
     <script src="../js/app.js"></script>
 </body>

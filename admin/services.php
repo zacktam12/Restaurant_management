@@ -112,13 +112,17 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>External Services Management - Restaurant Management System</title>
     <link href="../css/style.css" rel="stylesheet">
+    <link href="../css/enhanced-styles.css" rel="stylesheet">
+    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
+    <link href="../css/admin-layout.css" rel="stylesheet">
+    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="../admin/index.php">
-                <i class="bi bi-restaurant"></i> Restaurant Manager
+                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -130,48 +134,56 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/index.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/users.php">
-                                <i class="bi bi-people"></i> User Management
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/restaurants.php">
-                                <i class="bi bi-shop"></i> Restaurants
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reservations.php">
-                                <i class="bi bi-calendar-check"></i> Reservations
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="../admin/services.php">
-                                <i class="bi bi-gear"></i> External Services
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../admin/reports.php">
-                                <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/index.php">
+                        <span class="custom-icon icon-speedometer2"></span> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/users.php">
+                        <span class="custom-icon icon-people"></span> User Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/restaurants.php">
+                        <span class="custom-icon icon-shop"></span> Restaurants
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/reservations.php">
+                        <span class="custom-icon icon-calendar-check"></span> Reservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="../admin/services.php">
+                        <span class="custom-icon icon-gear"></span> External Services
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/reports.php">
+                        <span class="custom-icon icon-graph-up"></span> Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/api_keys.php">
+                        <span class="custom-icon icon-key"></span> API Keys
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../admin/service_registry.php">
+                        <span class="custom-icon icon-diagram-3"></span> Service Registry
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Main Content -->
+    <main class="main-content">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">External Services Management</h1>
                     <form method="GET">
@@ -254,14 +266,7 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                         </p>
                                     </div>
                                     <div class="card-footer">
-                                        <div class="btn-group w-100" role="group">
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="edit_service">
-                                                <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
-                                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </button>
-                                            </form>
+                                        <div class="d-flex justify-content-between align-items-center">
                                             <form method="POST" class="d-inline">
                                                 <input type="hidden" name="action" value="toggle_availability">
                                                 <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
@@ -269,13 +274,31 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                                     <i class="bi bi-<?php echo $tour['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
                                                 </button>
                                             </form>
-                                            <form method="GET" class="d-inline">
-                                                <input type="hidden" name="confirm_delete" value="<?php echo $tour['id']; ?>">
-                                                <input type="hidden" name="type" value="tour">
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                    <i class="bi bi-trash"></i> Delete
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
-                                            </form>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <form method="POST" class="d-inline">
+                                                            <input type="hidden" name="action" value="edit_service">
+                                                            <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bi bi-pencil me-2"></i>Edit
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="GET" class="d-inline">
+                                                            <input type="hidden" name="confirm_delete" value="<?php echo $tour['id']; ?>">
+                                                            <input type="hidden" name="type" value="tour">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="bi bi-trash me-2"></i>Delete
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -312,14 +335,7 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                         </p>
                                     </div>
                                     <div class="card-footer">
-                                        <div class="btn-group w-100" role="group">
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="edit_service">
-                                                <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
-                                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </button>
-                                            </form>
+                                        <div class="d-flex justify-content-between align-items-center">
                                             <form method="POST" class="d-inline">
                                                 <input type="hidden" name="action" value="toggle_availability">
                                                 <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
@@ -327,13 +343,31 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                                     <i class="bi bi-<?php echo $hotel['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
                                                 </button>
                                             </form>
-                                            <form method="GET" class="d-inline">
-                                                <input type="hidden" name="confirm_delete" value="<?php echo $hotel['id']; ?>">
-                                                <input type="hidden" name="type" value="hotel">
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                    <i class="bi bi-trash"></i> Delete
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
-                                            </form>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <form method="POST" class="d-inline">
+                                                            <input type="hidden" name="action" value="edit_service">
+                                                            <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bi bi-pencil me-2"></i>Edit
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="GET" class="d-inline">
+                                                            <input type="hidden" name="confirm_delete" value="<?php echo $hotel['id']; ?>">
+                                                            <input type="hidden" name="type" value="hotel">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="bi bi-trash me-2"></i>Delete
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -370,14 +404,7 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                         </p>
                                     </div>
                                     <div class="card-footer">
-                                        <div class="btn-group w-100" role="group">
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="edit_service">
-                                                <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
-                                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </button>
-                                            </form>
+                                        <div class="d-flex justify-content-between align-items-center">
                                             <form method="POST" class="d-inline">
                                                 <input type="hidden" name="action" value="toggle_availability">
                                                 <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
@@ -385,13 +412,31 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                                                     <i class="bi bi-<?php echo $taxi['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
                                                 </button>
                                             </form>
-                                            <form method="GET" class="d-inline">
-                                                <input type="hidden" name="confirm_delete" value="<?php echo $taxi['id']; ?>">
-                                                <input type="hidden" name="type" value="taxi">
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                    <i class="bi bi-trash"></i> Delete
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
-                                            </form>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <form method="POST" class="d-inline">
+                                                            <input type="hidden" name="action" value="edit_service">
+                                                            <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bi bi-pencil me-2"></i>Edit
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li>
+                                                        <form method="GET" class="d-inline">
+                                                            <input type="hidden" name="confirm_delete" value="<?php echo $taxi['id']; ?>">
+                                                            <input type="hidden" name="type" value="taxi">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="bi bi-trash me-2"></i>Delete
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -403,8 +448,6 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
                     <?php endif; ?>
                 </div>
             </main>
-        </div>
-    </div>
 
     <!-- Add Service Form -->
     <?php if (isset($_GET['show_add_form']) && $_GET['show_add_form'] == '1'): ?>
