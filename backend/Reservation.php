@@ -119,14 +119,17 @@ class Reservation {
     /**
      * Update reservation details
      */
-    public function updateReservation($id, $date, $time, $guests, $specialRequests = null) {
-        $query = "UPDATE {$this->table} SET date = ?, time = ?, guests = ?, special_requests = ?, updated_at = NOW() WHERE id = ?";
-        $params = [$date, $time, $guests, $specialRequests, $id];
-        $paramTypes = "ssisi";
+    /**
+     * Update reservation details
+     */
+    public function updateReservation($id, $date, $time, $guests, $status, $specialRequests = null) {
+        $query = "UPDATE {$this->table} SET date = ?, time = ?, guests = ?, status = ?, special_requests = ?, updated_at = NOW() WHERE id = ?";
+        $params = [$date, $time, $guests, $status, $specialRequests, $id];
+        $paramTypes = "ssissi";
 
         try {
             $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
+            if ($result['success']) {
                 return [
                     'success' => true,
                     'message' => 'Reservation updated successfully'
@@ -207,6 +210,9 @@ class Reservation {
     /**
      * Get upcoming reservations for a restaurant
      */
+    /**
+     * Get upcoming reservations for a restaurant
+     */
     public function getUpcomingReservations($restaurantId, $days = 30) {
         $query = "SELECT * FROM {$this->table} WHERE restaurant_id = ? AND date >= CURDATE() AND date <= DATE_ADD(CURDATE(), INTERVAL ? DAY) ORDER BY date, time";
         $params = [$restaurantId, $days];
@@ -216,6 +222,22 @@ class Reservation {
             return $this->db->select($query, $params, $paramTypes);
         } catch (Exception $e) {
             return [];
+        }
+    }
+
+    /**
+     * Get reservation count by date range
+     */
+    public function getReservationCountByDateRange($startDate, $endDate) {
+        $query = "SELECT COUNT(*) as count FROM {$this->table} WHERE date BETWEEN ? AND ?";
+        $params = [$startDate, $endDate];
+        $paramTypes = "ss";
+
+        try {
+            $result = $this->db->select($query, $params, $paramTypes);
+            return $result[0]['count'] ?? 0;
+        } catch (Exception $e) {
+            return 0;
         }
     }
 

@@ -117,14 +117,18 @@ class User {
     /**
      * Update user profile
      */
-    public function updateUser($id, $name, $email, $phone, $professionalDetails) {
-        $query = "UPDATE {$this->table} SET name = ?, email = ?, phone = ?, professional_details = ?, updated_at = NOW() WHERE id = ?";
-        $params = [$name, $email, $phone, $professionalDetails, $id];
-        $paramTypes = "ssssi";
+    /**
+     * Update user profile
+     */
+    public function updateUser($id, $name, $email, $role, $phone, $professionalDetails) {
+        $query = "UPDATE {$this->table} SET name = ?, email = ?, role = ?, phone = ?, professional_details = ?, updated_at = NOW() WHERE id = ?";
+        $params = [$name, $email, $role, $phone, $professionalDetails, $id];
+        $paramTypes = "sssssi";
 
         try {
             $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
+            if ($result['success']) {
+                // If 0 rows affected, it might just mean no changes were made, which is still a success contextually
                 return [
                     'success' => true,
                     'message' => 'User profile updated successfully'
@@ -182,6 +186,38 @@ class User {
                 'success' => false,
                 'message' => 'Database error: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Get user count by date range
+     */
+    public function getUserCountByDateRange($startDate, $endDate) {
+        $query = "SELECT COUNT(*) as count FROM {$this->table} WHERE created_at BETWEEN ? AND ?";
+        $params = [$startDate, $endDate];
+        $paramTypes = "ss";
+
+        try {
+            $result = $this->db->select($query, $params, $paramTypes);
+            return $result[0]['count'] ?? 0;
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get user count by role
+     */
+    public function getUserCountByRole($role) {
+        $query = "SELECT COUNT(*) as count FROM {$this->table} WHERE role = ?";
+        $params = [$role];
+        $paramTypes = "s";
+
+        try {
+            $result = $this->db->select($query, $params, $paramTypes);
+            return $result[0]['count'] ?? 0;
+        } catch (Exception $e) {
+            return 0;
         }
     }
 

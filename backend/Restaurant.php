@@ -156,6 +156,42 @@ class Restaurant {
     }
 
     /**
+     * Get top restaurants by reservation count
+     */
+    public function getTopRestaurantsByReservations($limit = 5) {
+        $query = "SELECT r.name, COUNT(res.id) as reservation_count 
+                  FROM {$this->table} r 
+                  LEFT JOIN reservations res ON r.id = res.restaurant_id 
+                  GROUP BY r.id, r.name 
+                  ORDER BY reservation_count DESC 
+                  LIMIT ?";
+        $params = [$limit];
+        $paramTypes = "i";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get average ratings by cuisine
+     */
+    public function getRestaurantRatingsByCuisine() {
+        $query = "SELECT cuisine, AVG(rating) as avg_rating, COUNT(*) as restaurant_count 
+                  FROM {$this->table} 
+                  GROUP BY cuisine 
+                  ORDER BY avg_rating DESC";
+
+        try {
+            return $this->db->select($query);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Close database connection
      */
     public function close() {
