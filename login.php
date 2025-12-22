@@ -136,6 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                         <div class="text-center mt-4">
                             <p class="mb-0">Don't have an account? <a href="register.php">Register</a></p>
+                            <p class="mb-0 mt-2"><a href="index.html">← Back to Home</a></p>
                         </div>
                     </div>
                 </div>
