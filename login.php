@@ -6,13 +6,12 @@
 
 session_start();
 
+require_once 'backend/Permission.php';
+
 // Redirect if already logged in
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
-    if ($_SESSION['user']['role'] == 'admin' || $_SESSION['user']['role'] == 'manager') {
-        header('Location: admin/index.php');
-    } else {
-        header('Location: tourist/index.php');
-    }
+    $dashboardUrl = Permission::getDashboardUrl($_SESSION['user']['role']);
+    header('Location: ' . $dashboardUrl);
     exit();
 }
 
@@ -39,12 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['logged_in'] = true;
             $_SESSION['user'] = $result['user'];
             
-            // Redirect based on role
-            if ($role == 'admin' || $role == 'manager') {
-                header('Location: admin/index.php');
-            } else {
-                header('Location: tourist/index.php');
-            }
+            // Redirect based on role using Permission class
+            $dashboardUrl = Permission::getDashboardUrl($result['user']['role']);
+            header('Location: ' . $dashboardUrl);
             exit();
         } else {
             $error = $result['message'];
@@ -123,8 +119,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <select class="form-select" id="role" name="role" required>
                                     <option value="">Select your role</option>
                                     <option value="customer">Customer</option>
-                                    <option value="tourist">Tourist</option>
-                                    <option value="tour_guide">Tour Guide</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
                                 </select>
