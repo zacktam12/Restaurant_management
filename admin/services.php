@@ -7,28 +7,22 @@
 session_start();
 
 // Check if user is logged in and is admin
+require_once '../backend/Permission.php';
+
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user']) || $_SESSION['user']['role'] != 'admin') {
+    !isset($_SESSION['user'])) {
     header('Location: ../login.php');
     exit();
 }
 
+// Require admin access
+Permission::requireAdmin($_SESSION['user']['role']);
+
 require_once '../backend/config.php';
 require_once '../backend/Service.php';
+require_once '../backend/Alert.php';
 
 $serviceManager = new Service();
-
-// Handle delete confirmation
-if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
-    $serviceId = $_GET['confirm_delete'];
-    $serviceType = $_GET['type'];
-    
-    // Display confirmation page
-    $service = $serviceManager->getServiceById($serviceId);
-    if ($service) {
-        // We'll handle the actual deletion through a POST request
-    }
-}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -44,8 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $_POST['service_rating'] ?? 0.0,
                     isset($_POST['service_available']) ? 1 : 0
                 );
-                $message = $result['message'];
-                break;
+                if ($result['success']) {
+                    Alert::setSuccess($result['message']);
+                } else {
+                    Alert::setError($result['message']);
+                }
+                header("Location: services.php");
+                exit();
                 
             case 'update_service':
                 $result = $serviceManager->updateService(
@@ -58,42 +57,56 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $_POST['service_rating'] ?? 0.0,
                     isset($_POST['service_available']) ? 1 : 0
                 );
-                $message = $result['message'];
-                break;
+                if ($result['success']) {
+                    Alert::setSuccess($result['message']);
+                } else {
+                    Alert::setError($result['message']);
+                }
+                header("Location: services.php");
+                exit();
                 
             case 'delete_service':
                 $result = $serviceManager->deleteService($_POST['id']);
-                $message = $result['message'];
-                break;
+                if ($result['success']) {
+                    Alert::setSuccess($result['message']);
+                } else {
+                    Alert::setError($result['message']);
+                }
+                header("Location: services.php");
+                exit();
                 
             case 'toggle_availability':
                 $result = $serviceManager->toggleAvailability($_POST['id']);
-                $message = $result['message'];
-                break;
+                if ($result['success']) {
+                    Alert::setSuccess($result['message']);
+                } else {
+                    Alert::setError($result['message']);
+                }
+                header("Location: services.php");
+                exit();
                 
             case 'edit_service':
-                // For now, we'll just show a message that edit functionality would be implemented
-                $message = 'Edit functionality would be implemented here for service ID: ' . $_POST['id'];
-                break;
+                Alert::setInfo('Edit functionality would be implemented here for service ID: ' . $_POST['id']);
+                header("Location: services.php");
+                exit();
         }
     }
 } else if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
-    // Handle delete confirmation through GET parameters
     $serviceId = $_GET['confirm_delete'];
-    $serviceType = $_GET['type'];
-    
-    // Show confirmation message
     $service = $serviceManager->getServiceById($serviceId);
     if ($service) {
-        $message = 'Are you sure you want to delete "' . htmlspecialchars($service['name']) . '"?';
-        $messageType = 'warning';
         $showDeleteConfirmation = true;
+        $confirmService = $service;
     }
 } else if (isset($_GET['delete_confirmed']) && isset($_GET['id'])) {
-    // Handle confirmed delete
     $result = $serviceManager->deleteService($_GET['id']);
-    $message = $result['message'];
-    $messageType = 'info';
+    if ($result['success']) {
+        Alert::setSuccess($result['message']);
+    } else {
+        Alert::setError($result['message']);
+    }
+    header("Location: services.php");
+    exit();
 }
 
 // Get all services
@@ -184,270 +197,290 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
 
     <!-- Main Content -->
     <main class="main-content">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">External Services Management</h1>
-                    <form method="GET">
-                        <input type="hidden" name="show_add_form" value="1">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-lg"></i> Add New Service
-                        </button>
-                    </form>
-                </div>
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+            <h1 class="h2 fw-bold">External Services Management</h1>
+            <form method="GET">
+                <input type="hidden" name="show_add_form" value="1">
+                <button type="submit" class="btn btn-primary shadow-sm">
+                    <span class="custom-icon icon-plus me-2" style="background-color: white;"></span>Add New Service
+                </button>
+            </form>
+        </div>
 
-                <?php if (isset($message)): ?>
-                <div class="alert alert-<?php echo isset($messageType) ? $messageType : 'info'; ?> alert-dismissible fade show" role="alert">
-                    <?php echo htmlspecialchars($message); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-                <div class="alert alert-warning" role="alert">
-                    <h4 class="alert-heading">Confirm Deletion</h4>
-                    <p>Are you sure you want to delete this service? This action cannot be undone.</p>
-                    <hr>
-                    <div class="d-flex">
-                        <a href="services.php" class="btn btn-secondary me-2">Cancel</a>
-                        <form method="GET" class="d-inline">
-                            <input type="hidden" name="delete_confirmed" value="1">
-                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                            <button type="submit" class="btn btn-danger">Yes, Delete Service</button>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
+        <?php Alert::display(); ?>
+        
+        <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
+        <div class="alert alert-warning shadow-sm" role="alert">
+            <h4 class="alert-heading">Confirm Deletion</h4>
+            <p>Are you sure you want to delete <strong><?php echo htmlspecialchars($confirmService['name']); ?></strong>? This action cannot be undone.</p>
+            <hr>
+            <div class="d-flex">
+                <a href="services.php" class="btn btn-secondary me-2">Cancel</a>
+                <form method="GET" class="d-inline">
+                    <input type="hidden" name="delete_confirmed" value="1">
+                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                    <button type="submit" class="btn btn-danger">Yes, Delete Service</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
 
-                <!-- Services Tabs -->
-                <div class="mb-4">
-                    <form method="GET" class="d-inline">
+        <!-- Services Tabs -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-2 bg-light rounded">
+                <div class="d-flex gap-2">
+                    <form method="GET" class="flex-grow-1">
                         <input type="hidden" name="tab" value="tours">
-                        <button type="submit" class="btn btn-<?php echo (!isset($_GET['tab']) || $_GET['tab'] == 'tours') ? 'primary' : 'outline-secondary'; ?> me-2">
-                            <i class="bi bi-compass"></i> Tours
+                        <button type="submit" class="btn w-100 <?php echo (!isset($_GET['tab']) || $_GET['tab'] == 'tours') ? 'btn-white shadow-sm fw-bold text-primary' : 'btn-light text-muted'; ?> border-0">
+                            <span class="custom-icon icon-compass me-2" style="background-color: currentColor;"></span>Tours
                         </button>
                     </form>
-                    <form method="GET" class="d-inline">
+                    <form method="GET" class="flex-grow-1">
                         <input type="hidden" name="tab" value="hotels">
-                        <button type="submit" class="btn btn-<?php echo (isset($_GET['tab']) && $_GET['tab'] == 'hotels') ? 'primary' : 'outline-secondary'; ?> me-2">
-                            <i class="bi bi-building"></i> Hotels
+                        <button type="submit" class="btn w-100 <?php echo (isset($_GET['tab']) && $_GET['tab'] == 'hotels') ? 'btn-white shadow-sm fw-bold text-primary' : 'btn-light text-muted'; ?> border-0">
+                            <span class="custom-icon icon-shop me-2" style="background-color: currentColor;"></span>Hotels
                         </button>
                     </form>
-                    <form method="GET" class="d-inline">
+                    <form method="GET" class="flex-grow-1">
                         <input type="hidden" name="tab" value="taxis">
-                        <button type="submit" class="btn btn-<?php echo (isset($_GET['tab']) && $_GET['tab'] == 'taxis') ? 'primary' : 'outline-secondary'; ?>">
-                            <i class="bi bi-car-front"></i> Taxis
+                        <button type="submit" class="btn w-100 <?php echo (isset($_GET['tab']) && $_GET['tab'] == 'taxis') ? 'btn-white shadow-sm fw-bold text-primary' : 'btn-light text-muted'; ?> border-0">
+                            <span class="custom-icon icon-truck me-2" style="background-color: currentColor;"></span>Taxis
                         </button>
                     </form>
                 </div>
+            </div>
+        </div>
 
-                <div>
-                    <!-- Tours Tab -->
-                    <?php if (!isset($_GET['tab']) || $_GET['tab'] == 'tours'): ?>
-                    <div>
-                        <div class="row">
-                            <?php if (empty($tours)): ?>
-                            <div class="col-12">
-                                <div class="text-center py-5">
-                                    <i class="bi bi-compass fs-1 text-muted"></i>
-                                    <h3 class="mt-3">No tours available</h3>
-                                </div>
-                            </div>
-                            <?php else: ?>
-                            <?php foreach ($tours as $tour): ?>
-                            <div class="col-md-6 col-lg-4 mb-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <h5 class="card-title"><?php echo htmlspecialchars($tour['name']); ?></h5>
-                                        <p class="card-text"><?php echo htmlspecialchars($tour['description']); ?></p>
-                                        <p class="card-text">
-                                            <small class="text-muted">
-                                                <i class="bi bi-currency-dollar"></i> $<?php echo number_format($tour['price'], 2); ?><br>
-                                                <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($tour['rating']); ?>/5.0
-                                            </small>
-                                        </p>
-                                    </div>
-                                    <div class="card-footer">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="toggle_availability">
-                                                <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
-                                                <button type="submit" class="btn btn-outline-<?php echo $tour['available'] ? 'success' : 'secondary'; ?> btn-sm">
-                                                    <i class="bi bi-<?php echo $tour['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
-                                                </button>
-                                            </form>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <form method="POST" class="d-inline">
-                                                            <input type="hidden" name="action" value="edit_service">
-                                                            <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
-                                                            <button type="submit" class="dropdown-item">
-                                                                <i class="bi bi-pencil me-2"></i>Edit
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                    <li>
-                                                        <form method="GET" class="d-inline">
-                                                            <input type="hidden" name="confirm_delete" value="<?php echo $tour['id']; ?>">
-                                                            <input type="hidden" name="type" value="tour">
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                <i class="bi bi-trash me-2"></i>Delete
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
+        <div>
+            <!-- Tours Tab -->
+            <?php if (!isset($_GET['tab']) || $_GET['tab'] == 'tours'): ?>
+            <div>
+                <div class="row g-4">
+                    <?php if (empty($tours)): ?>
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <span class="custom-icon icon-compass d-block mx-auto mb-3" style="width: 3rem; height: 3rem; background-color: var(--bs-gray-400);"></span>
+                            <h3 class="text-muted">No tours available</h3>
+                            <p class="text-secondary">Add a new tour service to get started</p>
                         </div>
                     </div>
-                    <?php endif; ?>
-
-                    <!-- Hotels Tab -->
-                    <?php if (isset($_GET['tab']) && $_GET['tab'] == 'hotels'): ?>
-                    <div>
-                        <div class="row">
-                            <?php if (empty($hotels)): ?>
-                            <div class="col-12">
-                                <div class="text-center py-5">
-                                    <i class="bi bi-building fs-1 text-muted"></i>
-                                    <h3 class="mt-3">No hotels available</h3>
+                    <?php else: ?>
+                    <?php foreach ($tours as $tour): ?>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm service-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title fw-bold mb-0"><?php echo htmlspecialchars($tour['name']); ?></h5>
+                                    <span class="badge bg-<?php echo $tour['available'] ? 'success' : 'secondary'; ?> bg-opacity-10 text-<?php echo $tour['available'] ? 'success' : 'secondary'; ?> border border-<?php echo $tour['available'] ? 'success' : 'secondary'; ?> border-opacity-25 rounded-pill">
+                                        <?php echo $tour['available'] ? 'Available' : 'Unavailable'; ?>
+                                    </span>
                                 </div>
-                            </div>
-                            <?php else: ?>
-                            <?php foreach ($hotels as $hotel): ?>
-                            <div class="col-md-6 col-lg-4 mb-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <h5 class="card-title"><?php echo htmlspecialchars($hotel['name']); ?></h5>
-                                        <p class="card-text"><?php echo htmlspecialchars($hotel['description']); ?></p>
-                                        <p class="card-text">
-                                            <small class="text-muted">
-                                                <i class="bi bi-currency-dollar"></i> $<?php echo number_format($hotel['price'], 2); ?>/night<br>
-                                                <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($hotel['rating']); ?>/5.0
-                                            </small>
-                                        </p>
-                                    </div>
-                                    <div class="card-footer">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="toggle_availability">
-                                                <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
-                                                <button type="submit" class="btn btn-outline-<?php echo $hotel['available'] ? 'success' : 'secondary'; ?> btn-sm">
-                                                    <i class="bi bi-<?php echo $hotel['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
-                                                </button>
-                                            </form>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <form method="POST" class="d-inline">
-                                                            <input type="hidden" name="action" value="edit_service">
-                                                            <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
-                                                            <button type="submit" class="dropdown-item">
-                                                                <i class="bi bi-pencil me-2"></i>Edit
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                    <li>
-                                                        <form method="GET" class="d-inline">
-                                                            <input type="hidden" name="confirm_delete" value="<?php echo $hotel['id']; ?>">
-                                                            <input type="hidden" name="type" value="hotel">
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                <i class="bi bi-trash me-2"></i>Delete
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
+                                <p class="card-text text-muted small mb-4"><?php echo htmlspecialchars($tour['description']); ?></p>
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="h5 mb-0 text-primary fw-bold">$<?php echo number_format($tour['price'], 2); ?></span>
+                                    <span class="mx-2 text-muted">|</span>
+                                    <div class="d-flex align-items-center text-warning small">
+                                        <span class="fw-bold me-1"><?php echo htmlspecialchars($tour['rating']); ?></span> ★
                                     </div>
                                 </div>
                             </div>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
+                            <div class="card-footer bg-white border-top-0 pt-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="toggle_availability">
+                                        <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-<?php echo $tour['available'] ? 'warning' : 'success'; ?> rounded-pill px-3">
+                                            <?php echo $tour['available'] ? 'Mark Unavailable' : 'Mark Available'; ?>
+                                        </button>
+                                    </form>
+                                    <div class="dropdown">
+                                        <button class="btn btn-light btn-sm rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                            <span class="custom-icon icon-three-dots-vertical" style="background-color: var(--bs-gray-600);"></span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="action" value="edit_service">
+                                                    <input type="hidden" name="id" value="<?php echo $tour['id']; ?>">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <span class="custom-icon icon-pencil me-2" style="background-color: var(--bs-gray-600); width: 0.8em; height: 0.8em;"></span>Edit
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="GET" class="d-inline">
+                                                    <input type="hidden" name="confirm_delete" value="<?php echo $tour['id']; ?>">
+                                                    <input type="hidden" name="type" value="tour">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <span class="custom-icon icon-trash me-2" style="background-color: var(--bs-danger); width: 0.8em; height: 0.8em;"></span>Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <?php endif; ?>
-
-                    <!-- Taxis Tab -->
-                    <?php if (isset($_GET['tab']) && $_GET['tab'] == 'taxis'): ?>
-                    <div>
-                        <div class="row">
-                            <?php if (empty($taxis)): ?>
-                            <div class="col-12">
-                                <div class="text-center py-5">
-                                    <i class="bi bi-car-front fs-1 text-muted"></i>
-                                    <h3 class="mt-3">No taxi services available</h3>
-                                </div>
-                            </div>
-                            <?php else: ?>
-                            <?php foreach ($taxis as $taxi): ?>
-                            <div class="col-md-6 col-lg-4 mb-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <h5 class="card-title"><?php echo htmlspecialchars($taxi['name']); ?></h5>
-                                        <p class="card-text"><?php echo htmlspecialchars($taxi['description']); ?></p>
-                                        <p class="card-text">
-                                            <small class="text-muted">
-                                                <i class="bi bi-currency-dollar"></i> $<?php echo number_format($taxi['price'], 2); ?><br>
-                                                <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($taxi['rating']); ?>/5.0
-                                            </small>
-                                        </p>
-                                    </div>
-                                    <div class="card-footer">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <form method="POST" class="d-inline">
-                                                <input type="hidden" name="action" value="toggle_availability">
-                                                <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
-                                                <button type="submit" class="btn btn-outline-<?php echo $taxi['available'] ? 'success' : 'secondary'; ?> btn-sm">
-                                                    <i class="bi bi-<?php echo $taxi['available'] ? 'check-circle' : 'x-circle'; ?>"></i>
-                                                </button>
-                                            </form>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <form method="POST" class="d-inline">
-                                                            <input type="hidden" name="action" value="edit_service">
-                                                            <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
-                                                            <button type="submit" class="dropdown-item">
-                                                                <i class="bi bi-pencil me-2"></i>Edit
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                    <li>
-                                                        <form method="GET" class="d-inline">
-                                                            <input type="hidden" name="confirm_delete" value="<?php echo $taxi['id']; ?>">
-                                                            <input type="hidden" name="type" value="taxi">
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                <i class="bi bi-trash me-2"></i>Delete
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
-            </main>
+            </div>
+            <?php endif; ?>
+
+            <!-- Hotels Tab -->
+            <?php if (isset($_GET['tab']) && $_GET['tab'] == 'hotels'): ?>
+            <div>
+                <div class="row g-4">
+                    <?php if (empty($hotels)): ?>
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <span class="custom-icon icon-shop d-block mx-auto mb-3" style="width: 3rem; height: 3rem; background-color: var(--bs-gray-400);"></span>
+                            <h3 class="text-muted">No hotels available</h3>
+                            <p class="text-secondary">Add a new hotel service to get started</p>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <?php foreach ($hotels as $hotel): ?>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm service-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title fw-bold mb-0"><?php echo htmlspecialchars($hotel['name']); ?></h5>
+                                    <span class="badge bg-<?php echo $hotel['available'] ? 'success' : 'secondary'; ?> bg-opacity-10 text-<?php echo $hotel['available'] ? 'success' : 'secondary'; ?> border border-<?php echo $hotel['available'] ? 'success' : 'secondary'; ?> border-opacity-25 rounded-pill">
+                                        <?php echo $hotel['available'] ? 'Available' : 'Unavailable'; ?>
+                                    </span>
+                                </div>
+                                <p class="card-text text-muted small mb-4"><?php echo htmlspecialchars($hotel['description']); ?></p>
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="h5 mb-0 text-primary fw-bold">$<?php echo number_format($hotel['price'], 2); ?><span class="fs-6 text-muted fw-normal">/night</span></span>
+                                    <span class="mx-2 text-muted">|</span>
+                                    <div class="d-flex align-items-center text-warning small">
+                                        <span class="fw-bold me-1"><?php echo htmlspecialchars($hotel['rating']); ?></span> ★
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white border-top-0 pt-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="toggle_availability">
+                                        <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-<?php echo $hotel['available'] ? 'warning' : 'success'; ?> rounded-pill px-3">
+                                            <?php echo $hotel['available'] ? 'Mark Unavailable' : 'Mark Available'; ?>
+                                        </button>
+                                    </form>
+                                    <div class="dropdown">
+                                        <button class="btn btn-light btn-sm rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                            <span class="custom-icon icon-three-dots-vertical" style="background-color: var(--bs-gray-600);"></span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="action" value="edit_service">
+                                                    <input type="hidden" name="id" value="<?php echo $hotel['id']; ?>">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <span class="custom-icon icon-pencil me-2" style="background-color: var(--bs-gray-600); width: 0.8em; height: 0.8em;"></span>Edit
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="GET" class="d-inline">
+                                                    <input type="hidden" name="confirm_delete" value="<?php echo $hotel['id']; ?>">
+                                                    <input type="hidden" name="type" value="hotel">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <span class="custom-icon icon-trash me-2" style="background-color: var(--bs-danger); width: 0.8em; height: 0.8em;"></span>Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Taxis Tab -->
+            <?php if (isset($_GET['tab']) && $_GET['tab'] == 'taxis'): ?>
+            <div>
+                <div class="row g-4">
+                    <?php if (empty($taxis)): ?>
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <span class="custom-icon icon-truck d-block mx-auto mb-3" style="width: 3rem; height: 3rem; background-color: var(--bs-gray-400);"></span>
+                            <h3 class="text-muted">No taxi services available</h3>
+                            <p class="text-secondary">Add a new taxi service to get started</p>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <?php foreach ($taxis as $taxi): ?>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm service-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title fw-bold mb-0"><?php echo htmlspecialchars($taxi['name']); ?></h5>
+                                    <span class="badge bg-<?php echo $taxi['available'] ? 'success' : 'secondary'; ?> bg-opacity-10 text-<?php echo $taxi['available'] ? 'success' : 'secondary'; ?> border border-<?php echo $taxi['available'] ? 'success' : 'secondary'; ?> border-opacity-25 rounded-pill">
+                                        <?php echo $taxi['available'] ? 'Available' : 'Unavailable'; ?>
+                                    </span>
+                                </div>
+                                <p class="card-text text-muted small mb-4"><?php echo htmlspecialchars($taxi['description']); ?></p>
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="h5 mb-0 text-primary fw-bold">$<?php echo number_format($taxi['price'], 2); ?></span>
+                                    <span class="mx-2 text-muted">|</span>
+                                    <div class="d-flex align-items-center text-warning small">
+                                        <span class="fw-bold me-1"><?php echo htmlspecialchars($taxi['rating']); ?></span> ★
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white border-top-0 pt-0 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="action" value="toggle_availability">
+                                        <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-<?php echo $taxi['available'] ? 'warning' : 'success'; ?> rounded-pill px-3">
+                                            <?php echo $taxi['available'] ? 'Mark Unavailable' : 'Mark Available'; ?>
+                                        </button>
+                                    </form>
+                                    <div class="dropdown">
+                                        <button class="btn btn-light btn-sm rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                            <span class="custom-icon icon-three-dots-vertical" style="background-color: var(--bs-gray-600);"></span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                            <li>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="action" value="edit_service">
+                                                    <input type="hidden" name="id" value="<?php echo $taxi['id']; ?>">
+                                                    <button type="submit" class="dropdown-item">
+                                                        <span class="custom-icon icon-pencil me-2" style="background-color: var(--bs-gray-600); width: 0.8em; height: 0.8em;"></span>Edit
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="GET" class="d-inline">
+                                                    <input type="hidden" name="confirm_delete" value="<?php echo $taxi['id']; ?>">
+                                                    <input type="hidden" name="type" value="taxi">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <span class="custom-icon icon-trash me-2" style="background-color: var(--bs-danger); width: 0.8em; height: 0.8em;"></span>Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </main>
 
     <!-- Add Service Form -->
     <?php if (isset($_GET['show_add_form']) && $_GET['show_add_form'] == '1'): ?>
