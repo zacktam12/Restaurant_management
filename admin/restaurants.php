@@ -6,19 +6,33 @@
 
 session_start();
 
-// Check if user is logged in and is admin/manager
+// Check if user is logged in and is admin
+require_once '../backend/Permission.php';
+
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user']) || ($_SESSION['user']['role'] != 'admin' && $_SESSION['user']['role'] != 'manager')) {
+    !isset($_SESSION['user'])) {
     header('Location: ../login.php');
     exit();
 }
 
+// Require admin access
+Permission::requireAdmin($_SESSION['user']['role']);
+
 require_once '../backend/config.php';
 require_once '../backend/Restaurant.php';
 require_once '../backend/Menu.php';
+require_once '../backend/User.php';
 
 $restaurantManager = new Restaurant();
 $menuManager = new Menu();
+$userManager = new User();
+
+$allowAdminOperationalActions = false;
+
+$allUsers = $userManager->getAllUsers();
+$managers = array_values(array_filter($allUsers, function($user) {
+    return isset($user['role']) && $user['role'] === 'manager';
+}));
 
 // Handle delete confirmation
 if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
@@ -58,6 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $_POST['image'] ?? null,
                     $_POST['seating_capacity'] ?? 0
                 );
+                if (isset($_POST['manager_ids']) && is_array($_POST['manager_ids'])) {
+                    $assignResult = $restaurantManager->setManagersForRestaurant((int)$_POST['id'], $_POST['manager_ids']);
+                    if (!$assignResult['success']) {
+                        $messageType = 'danger';
+                        $message = $assignResult['message'];
+                        break;
+                    }
+                }
                 $message = $result['message'];
                 break;
                 
@@ -67,6 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
                 
             case 'add_menu_item':
+                if (!$allowAdminOperationalActions) {
+                    $messageType = 'danger';
+                    $message = 'Admins cannot manage menu items. Assign a manager to handle restaurant operations.';
+                    break;
+                }
                 $result = $menuManager->createMenuItem(
                     $_POST['restaurant_id'],
                     $_POST['name'],
@@ -80,6 +107,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
                 
             case 'update_menu_item':
+                if (!$allowAdminOperationalActions) {
+                    $messageType = 'danger';
+                    $message = 'Admins cannot manage menu items. Assign a manager to handle restaurant operations.';
+                    break;
+                }
                 $result = $menuManager->updateMenuItem(
                     $_POST['id'],
                     $_POST['name'],
@@ -93,6 +125,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
                 
             case 'delete_menu_item':
+                if (!$allowAdminOperationalActions) {
+                    $messageType = 'danger';
+                    $message = 'Admins cannot manage menu items. Assign a manager to handle restaurant operations.';
+                    break;
+                }
                 $result = $menuManager->deleteMenuItem($_POST['id']);
                 $message = $result['message'];
                 break;
@@ -104,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // We'll set a flag to show the edit form
                     $showEditForm = true;
                     $editRestaurant = $restaurant;
+                    $editRestaurantManagerIds = $restaurantManager->getManagerIdsForRestaurant((int)$restaurant['id']);
                 } else {
                     $message = 'Restaurant not found.';
                 }
@@ -262,13 +300,19 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                 </div>
                 <?php endif; ?>
                 
+                <?php if (!$allowAdminOperationalActions): ?>
+                <div class="alert alert-info" role="alert">
+                    Admin access is limited to system-level tasks. Restaurant operations (menu management) are handled by Managers.
+                </div>
+                <?php endif; ?>
+                
                 <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
                 <div class="alert alert-warning" role="alert">
                     <h4 class="alert-heading">Confirm Deletion</h4>
                     <p><?php echo htmlspecialchars($message); ?></p>
                     <hr>
                     <div class="d-flex">
-                        <a href="restaurants.php" class="btn btn-secondary me-2">Cancel</a>
+                        <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
                         <form method="GET" class="d-inline">
                             <input type="hidden" name="delete_confirmed" value="1">
                             <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
@@ -380,6 +424,16 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                                 <label for="edit_image" class="form-label">Image URL</label>
                                 <input type="text" class="form-control" id="edit_image" name="image" value="<?php echo htmlspecialchars($editRestaurant['image'] ?? ''); ?>">
                             </div>
+                            <div class="mb-3">
+                                <label for="manager_ids" class="form-label">Assigned Managers</label>
+                                <select class="form-select" id="manager_ids" name="manager_ids[]" multiple>
+                                    <?php foreach ($managers as $manager): ?>
+                                    <option value="<?php echo (int)$manager['id']; ?>" <?php echo (isset($editRestaurantManagerIds) && in_array((int)$manager['id'], $editRestaurantManagerIds, true)) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($manager['name'] . ' (' . $manager['email'] . ')'); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
                                 <button type="submit" class="btn btn-primary">Update Restaurant</button>
@@ -442,106 +496,7 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                     <?php endforeach; ?>
                 </div>
 
-                <!-- Add Menu Item Form -->
-                <?php if (isset($_GET['show_add_menu_form']) && $_GET['show_add_menu_form'] == '1' && isset($_GET['restaurant_id'])): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Add Menu Item</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST">
-                            <input type="hidden" name="action" value="add_menu_item">
-                            <input type="hidden" name="restaurant_id" value="<?php echo $_GET['restaurant_id']; ?>">
-                            <div class="mb-3">
-                                <label for="menu_name" class="form-label">Item Name</label>
-                                <input type="text" class="form-control" id="menu_name" name="name" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="menu_description" class="form-label">Description</label>
-                                <textarea class="form-control" id="menu_description" name="description" rows="2" required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="price" class="form-label">Price</label>
-                                <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="category" class="form-label">Category</label>
-                                <select class="form-select" id="category" name="category" required>
-                                    <option value="appetizer">Appetizer</option>
-                                    <option value="main">Main Course</option>
-                                    <option value="dessert">Dessert</option>
-                                    <option value="beverage">Beverage</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="menu_image" class="form-label">Image URL</label>
-                                <input type="text" class="form-control" id="menu_image" name="image">
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="available" name="available" value="1" checked>
-                                    <label class="form-check-label" for="available">Available</label>
-                                </div>
-                            </div>
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="restaurants.php?restaurant_id=<?php echo $_GET['restaurant_id']; ?>" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Add Menu Item</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (isset($showEditMenuItemForm) && $showEditMenuItemForm): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Edit Menu Item</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST">
-                            <input type="hidden" name="action" value="update_menu_item">
-                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($editMenuItem['id']); ?>">
-                            <input type="hidden" name="restaurant_id" value="<?php echo htmlspecialchars($editMenuItem['restaurant_id']); ?>">
-                            <div class="mb-3">
-                                <label for="edit_menu_name" class="form-label">Item Name</label>
-                                <input type="text" class="form-control" id="edit_menu_name" name="name" value="<?php echo htmlspecialchars($editMenuItem['name']); ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_menu_description" class="form-label">Description</label>
-                                <textarea class="form-control" id="edit_menu_description" name="description" rows="2" required><?php echo htmlspecialchars($editMenuItem['description']); ?></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_price" class="form-label">Price</label>
-                                <input type="number" class="form-control" id="edit_price" name="price" step="0.01" min="0" value="<?php echo htmlspecialchars($editMenuItem['price']); ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_category" class="form-label">Category</label>
-                                <select class="form-select" id="edit_category" name="category" required>
-                                    <option value="appetizer" <?php echo $editMenuItem['category'] == 'appetizer' ? 'selected' : ''; ?>>Appetizer</option>
-                                    <option value="main" <?php echo $editMenuItem['category'] == 'main' ? 'selected' : ''; ?>>Main Course</option>
-                                    <option value="dessert" <?php echo $editMenuItem['category'] == 'dessert' ? 'selected' : ''; ?>>Dessert</option>
-                                    <option value="beverage" <?php echo $editMenuItem['category'] == 'beverage' ? 'selected' : ''; ?>>Beverage</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_menu_image" class="form-label">Image URL</label>
-                                <input type="text" class="form-control" id="edit_menu_image" name="image" value="<?php echo htmlspecialchars($editMenuItem['image'] ?? ''); ?>">
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="edit_available" name="available" value="1" <?php echo $editMenuItem['available'] ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="edit_available">Available</label>
-                                </div>
-                            </div>
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="restaurants.php?restaurant_id=<?php echo htmlspecialchars($editMenuItem['restaurant_id']); ?>" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Update Menu Item</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php if ($selectedRestaurantId): ?>
+                <?php if ($selectedRestaurantId && $allowAdminOperationalActions): ?>
                 <div class="card mt-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Menu Items</h5>
