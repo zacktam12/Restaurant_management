@@ -27,7 +27,7 @@ CREATE TABLE `users` (
   `email` VARCHAR(255) NOT NULL UNIQUE,
   `password` VARCHAR(255) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
-  `role` ENUM('admin', 'manager', 'customer', 'tourist', 'tour_guide') NOT NULL DEFAULT 'customer',
+  `role` ENUM('admin', 'manager', 'customer') NOT NULL DEFAULT 'customer',
   `phone` VARCHAR(20) DEFAULT NULL,
   `professional_details` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,6 +59,22 @@ CREATE TABLE `restaurants` (
   PRIMARY KEY (`id`),
   INDEX `idx_cuisine` (`cuisine`),
   INDEX `idx_rating` (`rating`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `restaurant_managers`
+--
+
+CREATE TABLE `restaurant_managers` (
+  `restaurant_id` INT(11) NOT NULL,
+  `manager_id` INT(11) NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`restaurant_id`, `manager_id`),
+  INDEX `idx_manager_id` (`manager_id`),
+  CONSTRAINT `fk_rm_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_rm_manager` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -239,13 +255,16 @@ INSERT INTO `menu_items` (`id`, `restaurant_id`, `name`, `description`, `price`,
 INSERT INTO `users` (`id`, `email`, `password`, `name`, `role`, `phone`, `professional_details`) VALUES
 (1, 'admin@restaurant.com', '$2y$10$example_hashed_password', 'Admin User', 'admin', '+1-555-0123', 'Restaurant Manager with 10+ years experience'),
 (2, 'manager@restaurant.com', '$2y$10$example_hashed_password', 'Manager User', 'manager', '+1-555-0456', 'Professional Chef with 5+ years experience'),
-(3, 'customer@example.com', '$2y$10$example_hashed_password', 'Customer User', 'customer', '+1-555-0789', NULL),
-(4, 'tourist@example.com', '$2y$10$example_hashed_password', 'Tourist User', 'tourist', '+1-555-0999', NULL);
+(3, 'customer@example.com', '$2y$10$example_hashed_password', 'Customer User', 'customer', '+1-555-0789', NULL);
 
 -- Sample reservations
 INSERT INTO `reservations` (`id`, `restaurant_id`, `customer_name`, `customer_email`, `customer_phone`, `date`, `time`, `guests`, `status`, `special_requests`) VALUES
 (1, 1, 'John Doe', 'john@example.com', '+1 234 567 1111', '2025-01-15', '19:00:00', 4, 'confirmed', 'Window seat preferred'),
 (2, 1, 'Jane Smith', 'jane@example.com', '+1 234 567 2222', '2025-01-16', '20:00:00', 2, 'pending', NULL);
+
+-- Sample restaurant manager assignments
+INSERT INTO `restaurant_managers` (`restaurant_id`, `manager_id`) VALUES
+(1, 2);
 
 -- Sample external services
 INSERT INTO `external_services` (`id`, `type`, `name`, `description`, `price`, `image`, `rating`, `available`) VALUES
