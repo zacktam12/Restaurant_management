@@ -7,11 +7,16 @@
 session_start();
 
 // Check if user is logged in and is admin
+require_once '../backend/Permission.php';
+
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user']) || ($_SESSION['user']['role'] != 'admin' && $_SESSION['user']['role'] != 'manager')) {
+    !isset($_SESSION['user'])) {
     header('Location: ../login.php');
     exit();
 }
+
+// Require admin access
+Permission::requireAdmin($_SESSION['user']['role']);
 
 require_once '../backend/config.php';
 require_once '../backend/User.php';
@@ -43,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $messageType = 'danger';
                 } else {
                     // Attempt registration
-                    $result = $userManager->register($name, $email, $password, $role, $phone, $professional_details);
+                    $result = $userManager->register($email, $password, $name, $role, $phone, $professional_details);
                     
                     if ($result['success']) {
                         $message = 'User added successfully!';
@@ -265,7 +270,6 @@ $users = $userManager->getAllUsers();
                                 <label for="role" class="form-label">Role</label>
                                 <select class="form-select" id="role" name="role" required>
                                     <option value="customer">Customer</option>
-                                    <option value="tourist">Tourist</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
                                 </select>
@@ -310,7 +314,6 @@ $users = $userManager->getAllUsers();
                                 <label for="edit_role" class="form-label">Role</label>
                                 <select class="form-select" id="edit_role" name="role" required>
                                     <option value="customer" <?php echo $editUser['role'] == 'customer' ? 'selected' : ''; ?>>Customer</option>
-                                    <option value="tourist" <?php echo $editUser['role'] == 'tourist' ? 'selected' : ''; ?>>Tourist</option>
                                     <option value="manager" <?php echo $editUser['role'] == 'manager' ? 'selected' : ''; ?>>Manager</option>
                                     <option value="admin" <?php echo $editUser['role'] == 'admin' ? 'selected' : ''; ?>>Admin</option>
                                 </select>
