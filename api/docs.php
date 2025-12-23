@@ -158,9 +158,9 @@ if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
     "email": "newuser@example.com",
     "password": "password123",
     "name": "Jane Smith",
-    "role": "tourist",
+    "role": "customer",
     "phone": "+1234567890",
-    "professional_details": "Tour guide with 5 years experience"
+    "professional_details": null
 }</pre>
                         </div>
                     </div>
