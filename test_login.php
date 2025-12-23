@@ -51,8 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <option value="admin">Admin</option>
                     <option value="manager">Manager</option>
                     <option value="customer">Customer</option>
-                    <option value="tourist">Tourist</option>
-                    <option value="tour_guide">Tour Guide</option>
                 </select><br><br>
             </div>
             <button type="submit">Test Login</button>

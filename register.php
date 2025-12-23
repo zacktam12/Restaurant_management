@@ -6,13 +6,12 @@
 
 session_start();
 
+require_once 'backend/Permission.php';
+
 // Redirect if already logged in
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
-    if ($_SESSION['user']['role'] == 'admin' || $_SESSION['user']['role'] == 'manager') {
-        header('Location: admin/index.php');
-    } else {
-        header('Location: tourist/index.php');
-    }
+    $dashboardUrl = Permission::getDashboardUrl($_SESSION['user']['role']);
+    header('Location: ' . $dashboardUrl);
     exit();
 }
 
@@ -126,17 +125,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <input type="password" class="form-control" id="password" name="password" required>
                             </div>
                             <div class="mb-3">
-                                <label for="role" class="form-label">Role</label>
+                                <label for="role" class="form-label">Account Type</label>
                                 <select class="form-select" id="role" name="role" required>
-                                    <option value="">Select your role</option>
-                                    <option value="customer"<?php echo ($role == 'customer') ? ' selected' : ''; ?>>Customer</option>
-                                    <option value="tourist"<?php echo ($role == 'tourist') ? ' selected' : ''; ?>>Tourist</option>
-                                    <option value="tour_guide"<?php echo ($role == 'tour_guide') ? ' selected' : ''; ?>>Tour Guide</option>
+                                    <option value="">Select account type</option>
+                                    <option value="customer" selected>Customer</option>
                                 </select>
-                            </div>
-                            <div class="mb-3" id="professionalDetailsField" style="display: <?php echo ($role == 'tour_guide') ? 'block' : 'none'; ?>;">
-                                <label for="professional_details" class="form-label">Professional Details</label>
-                                <textarea class="form-control" id="professional_details" name="professional_details" rows="3" placeholder="Enter your professional background and experience"><?php echo htmlspecialchars($professional_details ?? ''); ?></textarea>
+                                <small class="form-text text-muted">Public registration is only available for customer accounts.</small>
                             </div>
                             <div class="mb-3">
                                 <label for="phone" class="form-label">Phone Number</label>
