@@ -1,171 +1,379 @@
 /* Tourist Dashboard UI Polish */
 
+/* Global Overrides to remove bouncing */
+.card {
+  animation: none !important;
+  transform: none !important;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+  transform: none !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+  border-color: var(--bs-primary);
+}
+
+.form-control {
+  animation: none !important;
+}
+
 /* Navbar styling */
 .navbar {
-  background-color: var(--bs-primary);
-  box-shadow: var(--bs-shadow-sm);
-  padding: 0.5rem 1rem;
+  background-color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+  padding: 0.75rem 1rem !important;
+  --bs-navbar-color: var(--bs-gray-600);
+  --bs-navbar-hover-color: var(--bs-primary);
+  --bs-navbar-active-color: var(--bs-primary);
 }
 
 .navbar-brand {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1.5rem;
+  color: var(--bs-primary) !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* Active nav link indicator */
-.navbar-nav .nav-link.active::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 30px;
-  height: 3px;
-  background-color: white;
-  border-radius: 2px;
+/* Ensure nav links are visible against white background */
+.navbar-nav .nav-link {
+  color: var(--bs-gray-600) !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  transition: all 0.2s ease;
 }
 
-/* Navbar badge styling */
-.navbar .badge {
-  background-color: white;
-  color: var(--bs-primary);
-  font-size: 0.75em;
-  padding: 0.25em 0.5em;
-  border-radius: 0.375rem;
+.navbar-nav .nav-link:hover {
+  color: var(--bs-primary) !important;
+  background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.navbar-nav .nav-link.active {
+  color: var(--bs-primary) !important;
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
   font-weight: 600;
 }
 
-/* Navbar text */
-.navbar-text {
-  color: rgba(255, 255, 255, 0.85);
-  display: inline-block;
-  padding: 0.5rem;
+/* Remove the underline indicator from previous style */
+.navbar-nav .nav-link.active::after {
+  display: none;
+}
+
+.customer-navbar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+}
+
+.customer-navbar-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: 1.5rem;
+}
+
+.customer-navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.customer-navbar-user .navbar-text {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 991.98px) {
+  .customer-navbar-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .customer-navbar-links {
+    margin-left: 0;
+  }
+
+  .customer-navbar-user {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Fix toggler for white background */
+.navbar-toggler {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: var(--bs-gray-600) !important;
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%280, 0, 0, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(135deg, var(--bs-primary), #d97706);
+  color: white;
+  padding: 4rem 0 3rem;
+  margin-bottom: 3rem;
+  border-radius: 0 0 2rem 2rem;
+  box-shadow: 0 4px 15px rgba(var(--bs-primary-rgb), 0.2);
+}
+
+.hero-title {
+  font-weight: 800;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  max-width: 600px;
+}
+
+/* Search Box Styling */
+.search-card {
+  margin-top: -2rem;
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+  z-index: 10;
+  position: relative;
+  padding: 1.5rem;
+}
+
+.search-card .form-label {
+  font-weight: 600;
+  color: var(--bs-gray-700);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.search-card .form-control,
+.search-card .form-select {
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+.search-card .input-group-text {
+  padding: 0.55rem 0.75rem;
+}
+
+.search-card .form-control:focus,
+.search-card .form-select:focus {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.btn-primary {
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(var(--bs-primary-rgb), 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  /* Subtle lift, not bouncy */
+  box-shadow: 0 6px 12px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+/* Restaurant Cards */
+.restaurant-card {
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 1rem;
+  height: 100%;
+  transition: all 0.3s ease;
+  background: white;
+  overflow: hidden;
+}
+
+.restaurant-card .card-body {
+  padding: 1.5rem;
+}
+
+.restaurant-card .card-title {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--bs-gray-900);
+}
+
+.restaurant-card .card-text {
+  color: var(--bs-gray-600);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.restaurant-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--bs-gray-600);
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.restaurant-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Services tabs (tours/hotels/taxis) layout fixes */
+
+.tabs-header {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.tab-button {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--bs-gray-700);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  line-height: 1.1;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.tab-button:hover {
+  background: rgba(var(--bs-primary-rgb), 0.06);
+  border-color: rgba(var(--bs-primary-rgb), 0.25);
+  color: var(--bs-primary);
+}
+
+.tab-button.active {
+  background: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: #ffffff;
+}
+
+.tab-pane {
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 576px) {
+  .tabs-header {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+
+  .tab-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+/* Places modal action buttons alignment */
+.place-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.place-modal-actions form {
+  margin: 0;
+}
+
+.fw-bold-primary {
+  color: var(--bs-primary);
+  font-weight: 700;
+}
+
+/* Badge Updates */
+.badge {
+  padding: 0.5em 0.8em;
+  font-weight: 600;
 }
 
 .navbar-text .badge {
-  background-color: white;
-  color: var(--bs-primary);
-  font-size: 0.75em;
-  padding: 0.25em 0.5em;
-  border-radius: 0.375rem;
-  font-weight: 600;
-  margin-left: 0.5rem;
-}
-
-/* Clamp restaurant card descriptions to 3 lines */
-.card-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Update pagination focus shadows to use warm primary */
-.page-link:focus {
-  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+  background-color: var(--bs-primary) !important;
+  color: white !important;
 }
 
 /* Responsive adjustments */
-@media (min-width: 992px) {
+@media (max-width: 991.98px) {
+  .hero-section {
+    padding: 3rem 0 2rem;
+    border-radius: 0 0 1rem 1rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
   .navbar-nav {
+    border-top: 1px solid #eee;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+}
+
+/* Fix missing Bootstrap utilities and Navbar expansion */
+@media (min-width: 992px) {
+  .navbar-expand-lg .navbar-collapse {
+    display: flex !important;
+    flex-basis: auto;
+  }
+
+  .navbar-expand-lg .navbar-toggler {
+    display: none;
+  }
+
+  .navbar-expand-lg .navbar-nav {
     flex-direction: row;
   }
-  
-  .navbar-nav .nav-item {
-    margin-right: 1rem;
+
+  .navbar-expand-lg .navbar-nav .nav-link {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
   }
-  
-  .navbar-nav .nav-link {
-    color: rgba(255, 255, 255, 0.85);
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s ease-in-out;
+
+  .d-lg-block {
+    display: block !important;
   }
-  
-  .navbar-nav .nav-link:hover,
-  .navbar-nav .nav-link:focus {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
+
+  .d-lg-flex {
+    display: flex !important;
   }
-  
-  .navbar-nav .nav-link.active {
-    color: white;
-    background-color: var(--bs-primary-hover);
-    position: relative;
-  }
-  
-  /* Right-side user info styling */
-  .navbar-nav.ms-auto {
-    margin-left: auto !important;
-  }
-  
-  .navbar-nav.ms-auto .nav-link {
-    color: rgba(255, 255, 255, 0.85);
-    padding: 0.5rem 1rem;
-  }
-  
-  .navbar-nav.ms-auto .nav-link:hover,
-  .navbar-nav.ms-auto .nav-link:focus {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .navbar-collapse {
-    margin-top: 0;
-  }
-  
-  .navbar-nav.d-lg-none {
+
+  .d-lg-none {
     display: none !important;
   }
 }
 
-@media (max-width: 991.98px) {
-  .navbar-nav {
-    flex-direction: column;
-    margin-top: 1rem;
-  }
-  
-  .navbar-nav .nav-item {
-    margin-right: 0;
-    margin-bottom: 0.25rem;
-  }
-  
-  .navbar-nav .nav-link {
-    padding: 0.75rem 1rem;
-    color: rgba(255, 255, 255, 0.85);
-  }
-  
-  .navbar-nav .nav-link:hover,
-  .navbar-nav .nav-link:focus {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .navbar-nav .nav-link.active {
-    color: white;
-    background-color: var(--bs-primary-hover);
-    position: relative;
-  }
-  
-  .navbar-nav .nav-link.active::after {
-    display: none;
-  }
-  
-  .navbar-collapse {
-    margin-top: 1rem;
-  }
-  
-  .navbar-text {
-    margin-bottom: 1rem;
-  }
-  
-  .navbar-nav.d-lg-none .navbar-text {
-    margin-bottom: 0.5rem;
-    padding: 0.5rem 0;
-  }
-  
-  .navbar-nav.ms-auto {
-    margin-left: 0 !important;
-  }
+/* Ensure d-none works (if missing from base/style.css) */
+.d-none {
+  display: none !important;
+}
+
+/* Ensure d-flex works */
+.d-flex {
+  display: flex !important;
 }
