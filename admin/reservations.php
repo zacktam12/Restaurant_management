@@ -6,12 +6,17 @@
 
 session_start();
 
-// Check if user is logged in and is admin/manager
+// Check if user is logged in and is admin
+require_once '../backend/Permission.php';
+
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user']) || ($_SESSION['user']['role'] != 'admin' && $_SESSION['user']['role'] != 'manager')) {
+    !isset($_SESSION['user'])) {
     header('Location: ../login.php');
     exit();
 }
+
+// Require admin access
+Permission::requireAdmin($_SESSION['user']['role']);
 
 require_once '../backend/config.php';
 require_once '../backend/Reservation.php';
@@ -19,6 +24,8 @@ require_once '../backend/Restaurant.php';
 
 $reservationManager = new Reservation();
 $restaurantManager = new Restaurant();
+
+$allowAdminOperationalActions = false;
 
 // Handle delete confirmation
 if (isset($_GET['confirm_delete'])) {
@@ -32,11 +39,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'update_status':
+                if (!$allowAdminOperationalActions) {
+                    $messageType = 'danger';
+                    $message = 'Admins cannot manage reservations. Assign a manager to handle restaurant operations.';
+                    break;
+                }
                 $result = $reservationManager->updateReservationStatus($_POST['id'], $_POST['status']);
                 $message = $result['message'];
                 break;
                 
             case 'update_reservation':
+                if (!$allowAdminOperationalActions) {
+                    $messageType = 'danger';
+                    $message = 'Admins cannot manage reservations. Assign a manager to handle restaurant operations.';
+                    break;
+                }
                 $id = $_POST['id'] ?? '';
                 $date = $_POST['date'] ?? '';
                 $time = $_POST['time'] ?? '';
@@ -65,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'delete_reservation':
+                if (!$allowAdminOperationalActions) {
+                    $messageType = 'danger';
+                    $message = 'Admins cannot manage reservations. Assign a manager to handle restaurant operations.';
+                    break;
+                }
                 $result = $reservationManager->deleteReservation($_POST['id']);
                 $message = $result['message'];
                 break;
@@ -75,11 +97,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 // Handle edit request
 $editReservation = null;
 if (isset($_GET['edit_reservation'])) {
+    if (!$allowAdminOperationalActions) {
+        $messageType = 'danger';
+        $message = 'Admins cannot manage reservations. Assign a manager to handle restaurant operations.';
+    } else {
     $editReservationId = $_GET['edit_reservation'];
     $editReservation = $reservationManager->getReservationById($editReservationId);
     if (!$editReservation) {
         $message = 'Reservation not found.';
         $messageType = 'danger';
+    }
     }
 } else if (isset($_GET['confirm_delete'])) {
     // Handle delete confirmation through GET parameters
@@ -93,10 +120,15 @@ if (isset($_GET['edit_reservation'])) {
         $showDeleteConfirmation = true;
     }
 } else if (isset($_GET['delete_confirmed']) && isset($_GET['id'])) {
-    // Handle confirmed delete
-    $result = $reservationManager->deleteReservation($_GET['id']);
-    $message = $result['message'];
-    $messageType = 'info';
+    if (!$allowAdminOperationalActions) {
+        $messageType = 'danger';
+        $message = 'Admins cannot manage reservations. Assign a manager to handle restaurant operations.';
+    } else {
+        // Handle confirmed delete
+        $result = $reservationManager->deleteReservation($_GET['id']);
+        $message = $result['message'];
+        $messageType = 'info';
+    }
 }
 
 // Get all reservations
@@ -211,6 +243,12 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
                 <?php endif; ?>
+
+                <?php if (!$allowAdminOperationalActions): ?>
+                <div class="alert alert-info" role="alert">
+                    Admin access is limited to system-level tasks. Reservation operations are handled by Managers.
+                </div>
+                <?php endif; ?>
                 
                 <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
                 <div class="alert alert-warning" role="alert">
@@ -229,7 +267,7 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                 <?php endif; ?>
 
                 <!-- Edit Reservation Form -->
-                <?php if ($editReservation): ?>
+                <?php if ($editReservation && $allowAdminOperationalActions): ?>
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Edit Reservation</h5>
@@ -368,6 +406,9 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                                         </td>
                                         <td><?php echo htmlspecialchars($reservation['special_requests'] ?? 'None'); ?></td>
                                         <td>
+                                            <?php if (!$allowAdminOperationalActions): ?>
+                                                <span class="text-muted">View only</span>
+                                            <?php else: ?>
                                             <div class="dropdown">
                                                 <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <i class="bi bi-three-dots-vertical"></i>
@@ -385,6 +426,7 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                                                     </li>
                                                 </ul>
                                             </div>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
