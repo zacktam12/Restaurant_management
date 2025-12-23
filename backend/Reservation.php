@@ -9,6 +9,7 @@ require_once 'Database.php';
 class Reservation {
     private $db;
     private $table = 'reservations';
+    private $managerTable = 'restaurant_managers';
 
     public function __construct() {
         $this->db = new Database();
@@ -22,6 +23,54 @@ class Reservation {
 
         try {
             return $this->db->select($query);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function getReservationsForManager($managerId) {
+        $query = "SELECT res.*
+                  FROM {$this->table} res
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
+                  WHERE rm.manager_id = ?
+                  ORDER BY res.date DESC, res.time DESC";
+        $params = [$managerId];
+        $paramTypes = "i";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function getReservationsForManagerByRestaurant($managerId, $restaurantId) {
+        $query = "SELECT res.*
+                  FROM {$this->table} res
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
+                  WHERE rm.manager_id = ? AND res.restaurant_id = ?
+                  ORDER BY res.date DESC, res.time DESC";
+        $params = [$managerId, $restaurantId];
+        $paramTypes = "ii";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function getReservationsForManagerByStatus($managerId, $status) {
+        $query = "SELECT res.*
+                  FROM {$this->table} res
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
+                  WHERE rm.manager_id = ? AND res.status = ?
+                  ORDER BY res.date DESC, res.time DESC";
+        $params = [$managerId, $status];
+        $paramTypes = "is";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
         } catch (Exception $e) {
             return [];
         }
@@ -119,9 +168,6 @@ class Reservation {
     /**
      * Update reservation details
      */
-    /**
-     * Update reservation details
-     */
     public function updateReservation($id, $date, $time, $guests, $status, $specialRequests = null) {
         $query = "UPDATE {$this->table} SET date = ?, time = ?, guests = ?, status = ?, special_requests = ?, updated_at = NOW() WHERE id = ?";
         $params = [$date, $time, $guests, $status, $specialRequests, $id];
@@ -210,9 +256,6 @@ class Reservation {
     /**
      * Get upcoming reservations for a restaurant
      */
-    /**
-     * Get upcoming reservations for a restaurant
-     */
     public function getUpcomingReservations($restaurantId, $days = 30) {
         $query = "SELECT * FROM {$this->table} WHERE restaurant_id = ? AND date >= CURDATE() AND date <= DATE_ADD(CURDATE(), INTERVAL ? DAY) ORDER BY date, time";
         $params = [$restaurantId, $days];
@@ -232,6 +275,22 @@ class Reservation {
         $query = "SELECT COUNT(*) as count FROM {$this->table} WHERE date BETWEEN ? AND ?";
         $params = [$startDate, $endDate];
         $paramTypes = "ss";
+
+        try {
+            $result = $this->db->select($query, $params, $paramTypes);
+            return $result[0]['count'] ?? 0;
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    public function getReservationCountByDateRangeForManager($managerId, $startDate, $endDate) {
+        $query = "SELECT COUNT(*) as count
+                  FROM {$this->table} res
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
+                  WHERE rm.manager_id = ? AND res.date BETWEEN ? AND ?";
+        $params = [$managerId, $startDate, $endDate];
+        $paramTypes = "iss";
 
         try {
             $result = $this->db->select($query, $params, $paramTypes);

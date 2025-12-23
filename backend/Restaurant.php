@@ -9,6 +9,7 @@ require_once 'Database.php';
 class Restaurant {
     private $db;
     private $table = 'restaurants';
+    private $managerTable = 'restaurant_managers';
 
     public function __construct() {
         $this->db = new Database();
@@ -175,6 +176,25 @@ class Restaurant {
         }
     }
 
+    public function getTopRestaurantsByReservationsForManager($managerId, $limit = 5) {
+        $query = "SELECT r.name, COUNT(res.id) as reservation_count
+                  FROM {$this->table} r
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = r.id
+                  LEFT JOIN reservations res ON r.id = res.restaurant_id
+                  WHERE rm.manager_id = ?
+                  GROUP BY r.id, r.name
+                  ORDER BY reservation_count DESC
+                  LIMIT ?";
+        $params = [$managerId, $limit];
+        $paramTypes = "ii";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
     /**
      * Get average ratings by cuisine
      */
@@ -188,6 +208,96 @@ class Restaurant {
             return $this->db->select($query);
         } catch (Exception $e) {
             return [];
+        }
+    }
+
+    public function getRestaurantRatingsByCuisineForManager($managerId) {
+        $query = "SELECT r.cuisine, AVG(r.rating) as avg_rating, COUNT(*) as restaurant_count
+                  FROM {$this->table} r
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = r.id
+                  WHERE rm.manager_id = ?
+                  GROUP BY r.cuisine
+                  ORDER BY avg_rating DESC";
+        $params = [$managerId];
+        $paramTypes = "i";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function getRestaurantsForManager($managerId) {
+        $query = "SELECT r.*
+                  FROM {$this->table} r
+                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = r.id
+                  WHERE rm.manager_id = ?
+                  ORDER BY r.rating DESC, r.name ASC";
+
+        $params = [$managerId];
+        $paramTypes = "i";
+
+        try {
+            return $this->db->select($query, $params, $paramTypes);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function getManagerIdsForRestaurant($restaurantId) {
+        $query = "SELECT manager_id FROM {$this->managerTable} WHERE restaurant_id = ?";
+        $params = [$restaurantId];
+        $paramTypes = "i";
+
+        try {
+            $rows = $this->db->select($query, $params, $paramTypes);
+            return array_map(function($row) {
+                return (int)$row['manager_id'];
+            }, $rows);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function isManagerAssignedToRestaurant($managerId, $restaurantId) {
+        $query = "SELECT 1 FROM {$this->managerTable} WHERE manager_id = ? AND restaurant_id = ? LIMIT 1";
+        $params = [$managerId, $restaurantId];
+        $paramTypes = "ii";
+
+        try {
+            $rows = $this->db->select($query, $params, $paramTypes);
+            return !empty($rows);
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function setManagersForRestaurant($restaurantId, $managerIds) {
+        if (!is_array($managerIds)) {
+            $managerIds = [];
+        }
+
+        $managerIds = array_values(array_unique(array_filter($managerIds, function($id) {
+            return is_numeric($id);
+        })));
+
+        try {
+            $this->db->beginTransaction();
+
+            $deleteQuery = "DELETE FROM {$this->managerTable} WHERE restaurant_id = ?";
+            $this->db->execute($deleteQuery, [$restaurantId], "i");
+
+            foreach ($managerIds as $managerId) {
+                $insertQuery = "INSERT INTO {$this->managerTable} (restaurant_id, manager_id) VALUES (?, ?)";
+                $this->db->execute($insertQuery, [$restaurantId, (int)$managerId], "ii");
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'message' => 'Restaurant manager assignments updated successfully'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
         }
     }
 
