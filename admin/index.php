@@ -6,12 +6,17 @@
 
 session_start();
 
-// Check if user is logged in and is admin/manager
+// Check if user is logged in and has admin/manager access
+require_once '../backend/Permission.php';
+
 if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user']) || ($_SESSION['user']['role'] != 'admin' && $_SESSION['user']['role'] != 'manager')) {
+    !isset($_SESSION['user'])) {
     header('Location: ../login.php');
     exit();
 }
+
+// Require admin role only (managers have their own dashboard)
+Permission::requireAdmin($_SESSION['user']['role']);
 
 require_once '../backend/config.php';
 require_once '../backend/Booking.php';
