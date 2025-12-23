@@ -213,25 +213,28 @@ domReady(function() {
         }, 5000);
     });
     
-    // Enhanced search functionality with debounce
+    // Search functionality (avoid page reload on every keystroke)
+    // Submit when user presses Enter, and auto-submit when field is cleared.
     var searchInputs = document.querySelectorAll('#search, .search-input');
     searchInputs.forEach(function(searchInput) {
-        if (searchInput) {
-            searchInput.addEventListener('input', debounce(function() {
+        if (!searchInput) return;
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
                 var form = this.closest('form');
                 if (form) {
-                    // Add loading indicator
-                    var submitButton = form.querySelector('button[type="submit"]');
-                    if (submitButton) {
-                        submitButton.innerHTML = '<span class="spinner"></span> Searching...';
-                        submitButton.disabled = true;
-                    }
-                    
-                    // Submit form
                     form.submit();
                 }
-            }, 300));
-        }
+            }
+        });
+
+        searchInput.addEventListener('input', debounce(function() {
+            if (this.value !== '') return;
+            var form = this.closest('form');
+            if (form) {
+                form.submit();
+            }
+        }, 300));
     });
     
     // Auto-submit when category changes
@@ -248,6 +251,20 @@ domReady(function() {
                         submitButton.disabled = true;
                     }
                     
+                    // Submit form
+                    form.submit();
+                }
+            });
+        }
+    });
+
+    // Auto-submit when cuisine changes (restaurants filter)
+    var cuisineSelects = document.querySelectorAll('#cuisine, .cuisine-select');
+    cuisineSelects.forEach(function(cuisineSelect) {
+        if (cuisineSelect) {
+            cuisineSelect.addEventListener('change', function() {
+                var form = this.closest('form');
+                if (form) {
                     // Submit form
                     form.submit();
                 }
