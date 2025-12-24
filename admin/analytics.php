@@ -284,9 +284,9 @@ while ($currentDate <= $endDateTime) {
                     <label class="form-label text-muted small mb-1">End Date</label>
                     <input type="date" name="end_date" class="form-control" value="<?php echo htmlspecialchars($endDateFilter); ?>" required>
                 </div>
-                <div class="col-12 col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
-                    <a href="analytics.php" class="btn btn-outline-primary w-100">Reset</a>
+                <div class="col-12 col-md-3 d-grid d-md-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="analytics.php" class="btn btn-outline-primary">Reset</a>
                 </div>
             </form>
         </div>
