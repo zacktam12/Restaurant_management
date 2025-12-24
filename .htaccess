@@ -1,0 +1,21 @@
+# Disable directory browsing
+Options -Indexes
+
+# Set default index file
+DirectoryIndex index.php
+
+# Block access to sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "^(composer\.json|package\.json|Dockerfile|.*\.sql|.*\.md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Allow cross-origin requests for API (optional, can be handled in PHP)
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+</IfModule>
