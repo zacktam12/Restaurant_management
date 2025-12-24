@@ -1,126 +1,125 @@
 <?php
 /**
- * Authentication API
- * Handles user login and registration
+ * Authentication API Endpoint
+ * Handles login, register, and logout
  */
-
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
 
 require_once '../backend/config.php';
 require_once '../backend/User.php';
 require_once '../backend/ApiResponse.php';
 
+// Session is already started in config.php
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 $userManager = new User();
 
-try {
-    // Get request data
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    if (!$input) {
-        $input = $_POST;
-    }
-    
-    $action = isset($_GET['action']) ? $_GET['action'] : '';
-    
-    switch ($action) {
-        case 'login':
-            // Validate required fields
-            if (!isset($input['email']) || !isset($input['password'])) {
-                ApiResponse::validationError([
-                    'email' => 'Email is required',
-                    'password' => 'Password is required'
-                ]);
+switch ($action) {
+    case 'login':
+        if ($method !== 'POST') {
+            ApiResponse::sendError('Method not allowed', 405);
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input || !isset($input['email']) || !isset($input['password'])) {
+            ApiResponse::sendError('Email and password are required', 400);
+        }
+        
+        $result = $userManager->login($input['email'], $input['password']);
+        
+        if ($result['success']) {
+            $_SESSION['logged_in'] = true;
+            $_SESSION['user'] = $result['user'];
+            ApiResponse::sendSuccess($result['user'], 'Login successful');
+        } else {
+            ApiResponse::sendError($result['message'], 401);
+        }
+        break;
+        
+    case 'register':
+        if ($method !== 'POST') {
+            ApiResponse::sendError('Method not allowed', 405);
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            ApiResponse::sendError('Invalid JSON input', 400);
+        }
+        
+        $required = ['email', 'password', 'name'];
+        foreach ($required as $field) {
+            if (!isset($input[$field]) || empty($input[$field])) {
+                ApiResponse::sendError("Missing required field: {$field}", 400);
             }
-            
-            $result = $userManager->login($input['email'], $input['password']);
-            
-            if ($result['success']) {
-                // Start session
-                session_start();
-                $_SESSION['user'] = $result['user'];
-                $_SESSION['logged_in'] = true;
-                
-                ApiResponse::success($result['user'], 'Login successful');
+        }
+        
+        $result = $userManager->register(
+            $input['email'],
+            $input['password'],
+            $input['name'],
+            $input['role'] ?? 'customer',
+            $input['phone'] ?? null,
+            $input['professional_details'] ?? null
+        );
+        
+        if ($result['success']) {
+            ApiResponse::sendSuccess(['user_id' => $result['user_id']], $result['message'], 201);
+        } else {
+            ApiResponse::sendError($result['message'], 400);
+        }
+        break;
+        
+    case 'logout':
+        session_destroy();
+        ApiResponse::sendSuccess(null, 'Logout successful');
+        break;
+        
+    case 'profile':
+        if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+            ApiResponse::sendError('Not authenticated', 401);
+        }
+        
+        if ($method === 'GET') {
+            $user = $userManager->getUserById($_SESSION['user']['id']);
+            if ($user) {
+                ApiResponse::sendSuccess($user, 'Profile retrieved');
             } else {
-                ApiResponse::unauthorized($result['message']);
+                ApiResponse::sendError('User not found', 404);
             }
-            break;
+        } else if ($method === 'PUT') {
+            $input = json_decode(file_get_contents('php://input'), true);
             
-        case 'register':
-            // Validate required fields
-            $required = ['email', 'password', 'name'];
-            $errors = [];
-            foreach ($required as $field) {
-                if (!isset($input[$field]) || empty($input[$field])) {
-                    $errors[$field] = ucfirst($field) . ' is required';
-                }
-            }
-            
-            // Validate email format
-            if (isset($input['email']) && !filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
-                $errors['email'] = 'Invalid email format';
-            }
-            
-            // Validate password length
-            if (isset($input['password']) && strlen($input['password']) < 6) {
-                $errors['password'] = 'Password must be at least 6 characters';
-            }
-            
-            if (!empty($errors)) {
-                ApiResponse::validationError($errors);
-            }
-            
-            $role = isset($input['role']) ? $input['role'] : 'customer';
-            $phone = isset($input['phone']) ? $input['phone'] : null;
-            $professionalDetails = isset($input['professional_details']) ? $input['professional_details'] : null;
-            
-            $result = $userManager->register(
-                $input['email'],
-                $input['password'],
+            $result = $userManager->updateProfile(
+                $_SESSION['user']['id'],
                 $input['name'],
-                $role,
-                $phone,
-                $professionalDetails
+                $input['phone'] ?? null,
+                $input['professional_details'] ?? null
             );
             
             if ($result['success']) {
-                ApiResponse::created(null, $result['message']);
+                $_SESSION['user']['name'] = $input['name'];
+                $_SESSION['user']['phone'] = $input['phone'] ?? null;
+                ApiResponse::sendSuccess(null, $result['message']);
             } else {
-                ApiResponse::error($result['message'], [], 400);
+                ApiResponse::sendError($result['message'], 400);
             }
-            break;
-            
-        case 'logout':
-            session_start();
-            session_destroy();
-            ApiResponse::success(null, 'Logged out successfully');
-            break;
-            
-        case 'me':
-            session_start();
-            if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
-                ApiResponse::success($_SESSION['user'], 'User data retrieved');
-            } else {
-                ApiResponse::unauthorized('Not logged in');
-            }
-            break;
-            
-        default:
-            ApiResponse::notFound('Invalid action');
-            break;
-    }
-    
-} catch (Exception $e) {
-    ApiResponse::serverError('Server error: ' . $e->getMessage());
+        }
+        break;
+        
+    default:
+        ApiResponse::sendError('Invalid action', 400);
 }
 
 $userManager->close();
