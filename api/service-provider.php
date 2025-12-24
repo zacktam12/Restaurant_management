@@ -92,7 +92,7 @@ try {
                     'price_range' => $r['price_range'] ?? '$$$',
                     'rating' => (float)$r['rating'],
                     'image' => $r['image'],
-                    'service_url' => 'http://localhost/rest/api/service-provider.php?action=restaurant_details&id=' . $r['id']
+                    'service_url' => (getenv('APP_URL') ?: 'http://localhost/rest') . '/api/service-provider.php?action=restaurant_details&id=' . $r['id']
                 ];
             }, $restaurants);
             
@@ -292,7 +292,7 @@ try {
                     'availability_checking'
                 ],
                 'authentication' => 'API Key (X-API-Key header)',
-                'documentation' => 'http://localhost/rest/api/openapi.yaml',
+                'documentation' => (getenv('APP_URL') ?: 'http://localhost/rest') . '/api/openapi.yaml',
                 'endpoints' => [
                     'GET /api/service-provider.php?action=restaurants',
                     'GET /api/service-provider.php?action=restaurant_details&id={id}',
