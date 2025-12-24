@@ -1,28 +1,11 @@
--- Restaurant Management System Database
--- Version: 1.0
+-- Restaurant Management System Database Schema
+-- Run this script to create the database and tables
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
+CREATE DATABASE IF NOT EXISTS RMS;
+USE restaurant_management;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-
---
--- Database: `restaurant_management`
---
-CREATE DATABASE IF NOT EXISTS `restaurant_management` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `restaurant_management`;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `users`
---
-
-CREATE TABLE `users` (
+-- Users table
+CREATE TABLE IF NOT EXISTS `users` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `email` VARCHAR(255) NOT NULL UNIQUE,
   `password` VARCHAR(255) NOT NULL,
@@ -37,14 +20,10 @@ CREATE TABLE `users` (
   INDEX `idx_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `restaurants`
---
-
-CREATE TABLE `restaurants` (
+-- Restaurants table
+CREATE TABLE IF NOT EXISTS `restaurants` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `manager_id` INT(11) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT NOT NULL,
   `cuisine` VARCHAR(100) NOT NULL,
@@ -58,32 +37,37 @@ CREATE TABLE `restaurants` (
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   INDEX `idx_cuisine` (`cuisine`),
-  INDEX `idx_rating` (`rating`)
+  INDEX `idx_rating` (`rating`),
+  INDEX `idx_manager` (`manager_id`),
+  CONSTRAINT `fk_restaurant_manager` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `restaurant_managers`
---
-
-CREATE TABLE `restaurant_managers` (
+-- Reservations table
+CREATE TABLE IF NOT EXISTS `reservations` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
   `restaurant_id` INT(11) NOT NULL,
-  `manager_id` INT(11) NOT NULL,
+  `customer_id` INT(11) DEFAULT NULL,
+  `customer_name` VARCHAR(255) NOT NULL,
+  `customer_email` VARCHAR(255) NOT NULL,
+  `customer_phone` VARCHAR(20) NOT NULL,
+  `date` DATE NOT NULL,
+  `time` TIME NOT NULL,
+  `guests` INT(11) NOT NULL,
+  `status` ENUM('pending', 'confirmed', 'cancelled', 'completed') NOT NULL DEFAULT 'pending',
+  `special_requests` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`restaurant_id`, `manager_id`),
-  INDEX `idx_manager_id` (`manager_id`),
-  CONSTRAINT `fk_rm_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_rm_manager` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_restaurant_date` (`restaurant_id`, `date`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_customer_email` (`customer_email`),
+  INDEX `idx_customer_id` (`customer_id`),
+  CONSTRAINT `fk_reservation_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reservation_customer` FOREIGN KEY (`customer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `menu_items`
---
-
-CREATE TABLE `menu_items` (
+-- Menu items table
+CREATE TABLE IF NOT EXISTS `menu_items` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `restaurant_id` INT(11) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
@@ -99,38 +83,8 @@ CREATE TABLE `menu_items` (
   CONSTRAINT `fk_menu_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `reservations`
---
-
-CREATE TABLE `reservations` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `restaurant_id` INT(11) NOT NULL,
-  `customer_name` VARCHAR(255) NOT NULL,
-  `customer_email` VARCHAR(255) NOT NULL,
-  `customer_phone` VARCHAR(20) NOT NULL,
-  `date` DATE NOT NULL,
-  `time` TIME NOT NULL,
-  `guests` INT(11) NOT NULL,
-  `status` ENUM('pending', 'confirmed', 'cancelled', 'completed') NOT NULL DEFAULT 'pending',
-  `special_requests` TEXT DEFAULT NULL,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  INDEX `idx_restaurant_date` (`restaurant_id`, `date`),
-  INDEX `idx_status` (`status`),
-  CONSTRAINT `fk_reservation_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `external_services`
---
-
-CREATE TABLE `external_services` (
+-- External services table
+CREATE TABLE IF NOT EXISTS `external_services` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `type` ENUM('tour', 'hotel', 'taxi') NOT NULL,
   `name` VARCHAR(255) NOT NULL,
@@ -146,13 +100,8 @@ CREATE TABLE `external_services` (
   INDEX `idx_rating` (`rating`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `bookings`
---
-
-CREATE TABLE `bookings` (
+-- Bookings table
+CREATE TABLE IF NOT EXISTS `bookings` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `service_type` ENUM('tour', 'hotel', 'taxi', 'restaurant') NOT NULL,
   `service_id` INT(11) NOT NULL,
@@ -170,117 +119,42 @@ CREATE TABLE `bookings` (
   CONSTRAINT `fk_booking_customer` FOREIGN KEY (`customer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
+-- Insert default admin user (password: admin123)
+INSERT INTO `users` (`email`, `password`, `name`, `role`, `phone`) VALUES
+('admin@restaurant.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Admin', 'admin', '1234567890');
 
---
--- Table structure for table `reviews`
---
+-- Insert sample manager user (password: manager123)
+INSERT INTO `users` (`email`, `password`, `name`, `role`, `phone`) VALUES
+('manager@restaurant.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Restaurant Manager', 'manager', '0987654321');
 
-CREATE TABLE `reviews` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `restaurant_id` INT(11) NOT NULL,
-  `customer_name` VARCHAR(255) NOT NULL,
-  `rating` INT(1) NOT NULL CHECK (`rating` >= 1 AND `rating` <= 5),
-  `comment` TEXT NOT NULL,
-  `date` DATE NOT NULL,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  INDEX `idx_restaurant_rating` (`restaurant_id`, `rating`),
-  CONSTRAINT `fk_review_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Insert sample customer user (password: customer123)
+INSERT INTO `users` (`email`, `password`, `name`, `role`, `phone`) VALUES
+('customer@restaurant.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'John Customer', 'customer', '5555555555');
 
--- --------------------------------------------------------
+-- Insert sample restaurants
+INSERT INTO `restaurants` (`manager_id`, `name`, `description`, `cuisine`, `address`, `phone`, `price_range`, `rating`, `seating_capacity`) VALUES
+(2, 'The Golden Fork', 'Fine dining experience with exquisite Italian cuisine', 'Italian', '123 Main Street, Downtown', '555-0101', '$$$', 4.5, 50),
+(2, 'Spice Garden', 'Authentic Indian flavors in a cozy atmosphere', 'Indian', '456 Oak Avenue', '555-0102', '$$', 4.3, 40),
+(2, 'Sakura Sushi', 'Fresh sushi and Japanese delicacies', 'Japanese', '789 Cherry Lane', '555-0103', '$$$', 4.7, 35),
+(2, 'La Petite Bistro', 'Classic French cuisine with modern twist', 'French', '321 Elm Street', '555-0104', '$$$$', 4.8, 30),
+(2, 'Dragon Palace', 'Traditional Chinese dishes and dim sum', 'Chinese', '654 Bamboo Road', '555-0105', '$$', 4.2, 60);
 
---
--- Table structure for table `api_keys`
---
+-- Insert sample menu items
+INSERT INTO `menu_items` (`restaurant_id`, `name`, `description`, `price`, `category`, `available`) VALUES
+(1, 'Bruschetta', 'Toasted bread with fresh tomatoes and basil', 8.99, 'appetizer', 1),
+(1, 'Spaghetti Carbonara', 'Classic pasta with creamy egg sauce and pancetta', 18.99, 'main', 1),
+(1, 'Tiramisu', 'Traditional Italian coffee-flavored dessert', 9.99, 'dessert', 1),
+(1, 'Espresso', 'Strong Italian coffee', 3.99, 'beverage', 1),
+(2, 'Samosa', 'Crispy pastry filled with spiced potatoes', 6.99, 'appetizer', 1),
+(2, 'Butter Chicken', 'Tender chicken in creamy tomato sauce', 16.99, 'main', 1),
+(2, 'Gulab Jamun', 'Sweet milk dumplings in rose syrup', 7.99, 'dessert', 1),
+(2, 'Mango Lassi', 'Refreshing yogurt drink with mango', 4.99, 'beverage', 1);
 
-CREATE TABLE `api_keys` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `api_key` VARCHAR(64) NOT NULL UNIQUE,
-  `service_name` VARCHAR(255) NOT NULL,
-  `consumer_group` VARCHAR(50) NOT NULL,
-  `permissions` ENUM('read', 'write', 'read_write') NOT NULL DEFAULT 'read',
-  `is_active` TINYINT(1) NOT NULL DEFAULT '1',
-  `usage_count` INT(11) NOT NULL DEFAULT '0',
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `last_used` TIMESTAMP NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  INDEX `idx_api_key` (`api_key`),
-  INDEX `idx_active` (`is_active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `places`
---
-
-CREATE TABLE `places` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `description` TEXT NOT NULL,
-  `country` VARCHAR(100) NOT NULL,
-  `city` VARCHAR(100) NOT NULL,
-  `image` VARCHAR(255) DEFAULT NULL,
-  `rating` DECIMAL(2,1) NOT NULL DEFAULT '0.0',
-  `category` ENUM('historical', 'nature', 'cultural', 'adventure') NOT NULL,
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  INDEX `idx_category` (`category`),
-  INDEX `idx_rating` (`rating`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Insert sample data
---
-
--- Sample restaurants
-INSERT INTO `restaurants` (`id`, `name`, `description`, `cuisine`, `address`, `phone`, `price_range`, `rating`, `image`, `seating_capacity`) VALUES
-(1, 'La Bella Vista', 'Authentic Italian cuisine with a modern twist', 'Italian', '123 Harbor View, Downtown', '+1 234 567 8900', '$$$', 4.8, '/elegant-italian-restaurant.png', 80),
-(2, 'Sakura Garden', 'Traditional Japanese dining experience', 'Japanese', '456 Cherry Blossom Lane', '+1 234 567 8901', '$$$$', 4.9, '/japanese-restaurant-sushi-bar.jpg', 60),
-(3, 'Spice Route', 'Vibrant Indian flavors and spices', 'Indian', '789 Curry Street, Midtown', '+1 234 567 8902', '$$', 4.6, '/indian-restaurant-colorful-interior.jpg', 100);
-
--- Sample menu items
-INSERT INTO `menu_items` (`id`, `restaurant_id`, `name`, `description`, `price`, `category`, `image`, `available`) VALUES
-(1, 1, 'Margherita Pizza', 'Fresh mozzarella, tomatoes, basil', 18.99, 'main', '/margherita-pizza.png', 1),
-(2, 1, 'Tiramisu', 'Classic Italian dessert', 9.99, 'dessert', '/classic-tiramisu.png', 1),
-(3, 1, 'Bruschetta', 'Toasted bread with tomatoes and garlic', 12.99, 'appetizer', '/classic-bruschetta.png', 1);
-
--- Sample users
-INSERT INTO `users` (`id`, `email`, `password`, `name`, `role`, `phone`, `professional_details`) VALUES
-(1, 'admin@restaurant.com', '$2y$10$example_hashed_password', 'Admin User', 'admin', '+1-555-0123', 'Restaurant Manager with 10+ years experience'),
-(2, 'manager@restaurant.com', '$2y$10$example_hashed_password', 'Manager User', 'manager', '+1-555-0456', 'Professional Chef with 5+ years experience'),
-(3, 'customer@example.com', '$2y$10$example_hashed_password', 'Customer User', 'customer', '+1-555-0789', NULL);
-
--- Sample reservations
-INSERT INTO `reservations` (`id`, `restaurant_id`, `customer_name`, `customer_email`, `customer_phone`, `date`, `time`, `guests`, `status`, `special_requests`) VALUES
-(1, 1, 'John Doe', 'john@example.com', '+1 234 567 1111', '2025-01-15', '19:00:00', 4, 'confirmed', 'Window seat preferred'),
-(2, 1, 'Jane Smith', 'jane@example.com', '+1 234 567 2222', '2025-01-16', '20:00:00', 2, 'pending', NULL);
-
--- Sample restaurant manager assignments
-INSERT INTO `restaurant_managers` (`restaurant_id`, `manager_id`) VALUES
-(1, 2);
-
--- Sample external services
-INSERT INTO `external_services` (`id`, `type`, `name`, `description`, `price`, `image`, `rating`, `available`) VALUES
-(1, 'tour', 'City Historical Tour', '3-hour guided tour of historical landmarks', 45.00, '/city-tour-bus.jpg', 4.7, 1),
-(2, 'hotel', 'Grand Palace Hotel', '5-star luxury accommodation', 250.00, '/luxury-hotel-exterior.png', 4.9, 1),
-(3, 'taxi', 'Premium Taxi Service', '24/7 reliable transportation', 25.00, '/taxi-cab-service.jpg', 4.5, 1);
-
--- Sample places
-INSERT INTO `places` (`id`, `name`, `description`, `country`, `city`, `image`, `rating`, `category`) VALUES
-(1, 'Grand Canyon', 'Breathtaking natural wonder with stunning views', 'USA', 'Arizona', '/grand-canyon.png', 4.9, 'nature'),
-(2, 'Eiffel Tower', 'Iconic landmark and symbol of Paris', 'France', 'Paris', '/eiffel-tower.png', 4.8, 'historical'),
-(3, 'Machu Picchu', 'Ancient Incan citadel in the Andes Mountains', 'Peru', 'Cusco', '/machu-picchu-ancient-city.png', 4.9, 'historical'),
-(4, 'Kyoto Temples', 'Traditional Japanese temples and gardens', 'Japan', 'Kyoto', '/kyoto-temples.jpg', 4.7, 'cultural');
-
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+-- Insert sample external services
+INSERT INTO `external_services` (`type`, `name`, `description`, `price`, `rating`, `available`) VALUES
+('tour', 'City Walking Tour', 'Explore the historic downtown area on foot', 25.00, 4.5, 1),
+('tour', 'Wine Country Tour', 'Full-day tour of local wineries', 150.00, 4.8, 1),
+('hotel', 'Grand Plaza Hotel', 'Luxury 5-star hotel in city center', 250.00, 4.7, 1),
+('hotel', 'Budget Inn', 'Affordable accommodation with basic amenities', 75.00, 3.8, 1),
+('taxi', 'Airport Transfer', 'Private car service to/from airport', 45.00, 4.4, 1),
+('taxi', 'City Tour by Car', 'Comfortable car tour around the city', 80.00, 4.3, 1);
