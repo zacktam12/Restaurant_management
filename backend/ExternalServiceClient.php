@@ -20,9 +20,9 @@ class ExternalServiceClient {
         // If they are on the same network, these will likely be IP addresses (e.g., http://192.168.1.50/api)
         // ==================================================================================
         
-        $tourServiceUrl   = 'https://tour-management-web.onrender.com/api/v1';   
-        $hotelServiceUrl  = 'http://localhost/hotel-service/api';  
-        $taxiServiceUrl   = 'https://taxi-system.infinityfreeapp.com/api'; 
+        $tourServiceUrl   = getenv('TOUR_SERVICE_URL') ?: 'https://tour-management-web.onrender.com/api/v1';   
+        $hotelServiceUrl  = getenv('HOTEL_SERVICE_URL') ?: 'http://localhost/hotel-service/api';  
+        $taxiServiceUrl   = getenv('TAXI_SERVICE_URL') ?: 'https://taxi-system.infinityfreeapp.com/api'; 
         
         // Mock Mode (Set to true to switch back to simulator for testing)
         // $baseUrl = 'http://localhost/rest/api/mock-external-services.php';

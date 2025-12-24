@@ -4,10 +4,10 @@
  * Update these values according to your server settings
  */
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'restaurant_management');
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_NAME', getenv('DB_NAME') ?: 'restaurant_management');
 define('PASSWORD_HASH_ALGO', PASSWORD_DEFAULT);
 
 // Error reporting (disable in production)

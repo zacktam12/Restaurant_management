@@ -1,0 +1,9 @@
+{
+    "name": "rest/restaurant-management",
+    "description": "Restaurant Management System",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "ext-mysqli": "*"
+    }
+}
