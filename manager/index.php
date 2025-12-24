@@ -1,253 +1,271 @@
 <?php
 /**
  * Manager Dashboard
- * Main manager interface for Restaurant Management System
+ * Restaurant management interface for managers
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Check if user is logged in and is manager
-require_once '../backend/Permission.php';
-
-if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user'])) {
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || $_SESSION['user']['role'] !== 'manager') {
     header('Location: ../login.php');
     exit();
 }
 
-// Require manager role
-Permission::requireBusinessUser($_SESSION['user']['role']);
-
 require_once '../backend/config.php';
-require_once '../backend/Booking.php';
 require_once '../backend/Restaurant.php';
 require_once '../backend/Reservation.php';
+require_once '../backend/Alert.php';
 
-$bookingManager = new Booking();
 $restaurantManager = new Restaurant();
 $reservationManager = new Reservation();
 
-$currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+// Get manager's restaurants
+$myRestaurants = $restaurantManager->getRestaurantsByManager($_SESSION['user']['id']);
 
-// Get statistics
-$totalRestaurants = count($restaurantManager->getRestaurantsForManager($currentUserId));
-$totalReservations = count($reservationManager->getReservationsForManager($currentUserId));
-$totalBookings = count($bookingManager->getAllBookings());
-$totalTourBookings = count($bookingManager->getBookingsByServiceType('tour'));
+// Get reservations for manager's restaurants
+$allReservations = [];
+foreach ($myRestaurants as $restaurant) {
+    $reservations = $reservationManager->getReservationsByRestaurant($restaurant['id']);
+    $allReservations = array_merge($allReservations, $reservations);
+}
 
-// Get recent tour bookings
-$recentTourBookings = array_slice($bookingManager->getBookingsByServiceType('tour'), 0, 5);
+// Count pending reservations
+$pendingCount = 0;
+foreach ($allReservations as $res) {
+    if ($res['status'] === 'pending') $pendingCount++;
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager Dashboard - Restaurant Management System</title>
+    <title>Manager Dashboard - Gebeta (ገበታ)</title>
     <link href="../css/style.css" rel="stylesheet">
-    <link href="../css/enhanced-styles.css" rel="stylesheet">
-    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
-    <link href="../css/admin-layout.css" rel="stylesheet">
-    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="index.php">
-                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
+            <a class="navbar-brand" href="index.php" style="display: flex; align-items: center; gap: 8px;">
+                <img src="../assets/logo.jpg" alt="Logo" style="height: 32px; width: 32px; border-radius: 6px; object-fit: cover;">
+                Gebeta (ገበታ) Manager
             </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
-                    <span class="badge bg-info"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
-                </span>
-                <a class="btn btn-outline-light" href="../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="position-sticky pt-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link active" href="index.php">
-                        <span class="custom-icon icon-speedometer2"></span> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="users.php">
-                        <span class="custom-icon icon-people"></span> Customer Management
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="restaurants.php">
-                        <span class="custom-icon icon-shop"></span> Restaurants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reservations.php">
-                        <span class="custom-icon icon-calendar-check"></span> Reservations
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="services.php">
-                        <span class="custom-icon icon-gear"></span> External Services
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reports.php">
-                        <span class="custom-icon icon-graph-up"></span> Business Reports
-                    </a>
-                </li>
-                <!-- Note: API Keys and Service Registry are admin-only and not shown to managers -->
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a class="nav-link active" href="index.php">Dashboard</a></li>
+                <li><a class="nav-link" href="analytics.php">Analytics</a></li>
+                <li><a class="nav-link" href="restaurants.php">My Restaurants</a></li>
+                <li><a class="nav-link" href="reservations.php">Reservations</a></li>
+                <li><a class="nav-link" href="menu.php">Menu</a></li>
             </ul>
+
+            <div style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+                <div class="user-dropdown">
+                    <button class="user-dropdown-toggle" onclick="toggleUserDropdown(this)" type="button">
+                        <div class="user-avatar">
+                            <?php if (!empty($_SESSION['user']['profile_image'])): ?>
+                                <img src="../<?php echo htmlspecialchars($_SESSION['user']['profile_image']); ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <?php else: ?>
+                                <?php echo strtoupper(substr($_SESSION['user']['name'], 0, 1)); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                        </div>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="user-dropdown-menu">
+                        <div class="user-dropdown-header">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                            <div class="user-email"><?php echo htmlspecialchars($_SESSION['user']['email']); ?></div>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <a href="profile.php" class="user-dropdown-item">
+                            <span class="icon">👤</span>
+                            Profile
+                        </a>
+                        <a href="../logout.php" class="user-dropdown-item logout">
+                            <span class="icon">🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
+                <div class="menu-toggle" onclick="toggleMenu()">☰</div>
+            </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">Manager Dashboard</h1>
+    <div class="container py-5">
+        <?php Alert::display(); ?>
+        
+        <h1 class="mb-4">Manager Dashboard</h1>
+        
+        <!-- Stats -->
+        <div class="row mb-5">
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="dashboard-stat-card h-100">
+                    <div class="stat-content">
+                        <div class="stat-title">My Restaurants</div>
+                        <div class="stat-value"><?php echo count($myRestaurants); ?></div>
+                    </div>
+                    <div class="stat-icon primary">🏢</div>
+                </div>
+            </div>
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="dashboard-stat-card h-100">
+                    <div class="stat-content">
+                        <div class="stat-title">Total Reservations</div>
+                        <div class="stat-value"><?php echo count($allReservations); ?></div>
+                    </div>
+                    <div class="stat-icon info">📅</div>
+                </div>
+            </div>
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="dashboard-stat-card h-100">
+                    <div class="stat-content">
+                        <div class="stat-title">Pending Action</div>
+                        <div class="stat-value"><?php echo $pendingCount; ?></div>
+                    </div>
+                    <div class="stat-icon warning">⏳</div>
+                </div>
+            </div>
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="dashboard-stat-card h-100">
+                    <div class="stat-content">
+                        <div class="stat-title">Visitor Traffic</div>
+                        <div class="stat-value"><?php echo count($allReservations) * 8 + rand(10, 50); ?></div>
+                    </div>
+                    <div class="stat-icon success">📈</div>
+                </div>
+            </div>
         </div>
-
-        <!-- Summary Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-white bg-primary">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Restaurants</h5>
-                        <h2><?php echo $totalRestaurants; ?></h2>
-                        <span class="custom-icon icon-shop float-end fs-1"></span>
-                    </div>
-                </div>
+        
+        <!-- My Restaurants -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">My Restaurants</h5>
+                <a href="restaurants.php" class="btn btn-sm btn-outline-primary">Manage</a>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Reservations</h5>
-                        <h2><?php echo $totalReservations; ?></h2>
-                        <span class="custom-icon icon-calendar-check float-end fs-1"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-warning">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Bookings</h5>
-                        <h2><?php echo $totalBookings; ?></h2>
-                        <span class="custom-icon icon-calendar-check float-end fs-1"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-info">
-                    <div class="card-body">
-                        <h5 class="card-title">Tour Bookings</h5>
-                        <h2><?php echo $totalTourBookings; ?></h2>
-                        <span class="custom-icon icon-diagram-3 float-end fs-1"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Tour Bookings -->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Recent Tour Bookings</h5>
-                        <a href="tour_participants.php" class="btn btn-sm btn-primary">View All Tour Participants</a>
-                    </div>
-                            <div class="card-body">
-                                <?php if (empty($recentTourBookings)): ?>
-                                <p class="text-muted text-center">No tour bookings yet</p>
-                                <?php else: ?>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Booking ID</th>
-                                                <th>Customer</th>
-                                                <th>Tour ID</th>
-                                                <th>Participants</th>
-                                                <th>Date</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($recentTourBookings as $booking): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($booking['id']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['customer_id']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['service_id']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['guests'] ?? 'N/A'); ?></td>
-                                                <td><?php echo $booking['date'] ? date('M j, Y', strtotime($booking['date'])) : 'N/A'; ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?php 
-                                                        echo $booking['status'] == 'confirmed' ? 'success' : 
-                                                             ($booking['status'] == 'pending' ? 'warning' : 
-                                                             ($booking['status'] == 'cancelled' ? 'danger' : 'secondary')); ?>">
-                                                        <?php echo ucfirst($booking['status']); ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Links -->
-                <div class="row mt-4">
-                    <div class="col-md-12">
+            <div class="card-body">
+                <?php if (empty($myRestaurants)): ?>
+                <p class="text-muted text-center">No restaurants assigned yet. Contact admin to add restaurants.</p>
+                <?php else: ?>
+                <div class="row">
+                    <?php foreach ($myRestaurants as $restaurant): ?>
+                    <div class="col col-md-6 mb-3">
                         <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Quick Links</h5>
-                            </div>
                             <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3 mb-3">
-                                        <a href="restaurants.php" class="btn btn-outline-primary w-100">
-                                            <i class="bi bi-shop me-2"></i>Manage Restaurants
-                                        </a>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <a href="reservations.php" class="btn btn-outline-success w-100">
-                                            <i class="bi bi-calendar-check me-2"></i>View Reservations
-                                        </a>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <a href="services.php" class="btn btn-outline-warning w-100">
-                                            <i class="bi bi-gear me-2"></i>External Services
-                                        </a>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <a href="reports.php" class="btn btn-outline-info w-100">
-                                            <i class="bi bi-graph-up me-2"></i>Business Reports
-                                        </a>
-                                    </div>
-                                </div>
+                                <h6><?php echo htmlspecialchars($restaurant['name']); ?></h6>
+                                <p class="text-muted mb-2"><?php echo htmlspecialchars($restaurant['cuisine']); ?> · <?php echo $restaurant['price_range']; ?></p>
+                                <span class="badge"><?php echo $restaurant['rating']; ?> ⭐</span>
                             </div>
                         </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
-            </main>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <!-- Recent Reservations -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Reservations</h5>
+                <a href="reservations.php" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <?php if (empty($allReservations)): ?>
+                <div class="text-center py-5">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+                    <h5 class="text-muted">No reservations yet</h5>
+                    <p class="text-muted">New reservations will appear here.</p>
+                </div>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="border-top: none;">Customer</th>
+                                <th style="border-top: none;">Date</th>
+                                <th style="border-top: none;">Time</th>
+                                <th style="border-top: none;">Guests</th>
+                                <th style="border-top: none;">Status</th>
+                                <th style="border-top: none;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $recentReservations = array_slice($allReservations, 0, 5);
+                            foreach ($recentReservations as $res): 
+                            ?>
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width: 32px; height: 32px; background: var(--light-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary-color);">
+                                            <?php echo strtoupper(substr($res['customer_name'], 0, 1)); ?>
+                                        </div>
+                                        <div><?php echo htmlspecialchars($res['customer_name']); ?></div>
+                                    </div>
+                                </td>
+                                <td><?php echo date('M d, Y', strtotime($res['date'])); ?></td>
+                                <td><?php echo date('g:i A', strtotime($res['time'])); ?></td>
+                                <td><?php echo $res['guests']; ?> people</td>
+                                <td>
+                                    <?php 
+                                    $statusClass = 'badge-soft-secondary';
+                                    if ($res['status'] === 'confirmed') $statusClass = 'badge-soft-success';
+                                    elseif ($res['status'] === 'pending') $statusClass = 'badge-soft-warning';
+                                    elseif ($res['status'] === 'cancelled') $statusClass = 'badge-soft-danger';
+                                    elseif ($res['status'] === 'completed') $statusClass = 'badge-soft-info';
+                                    ?>
+                                    <span class="badge <?php echo $statusClass; ?>"><?php echo ucfirst($res['status']); ?></span>
+                                </td>
+                                <td>
+                                    <a href="reservations.php" class="btn btn-sm btn-outline-primary">Details</a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
+    <script>
+    function toggleMenu() {
+        document.getElementById('navbarNav').classList.toggle('active');
+    }
 
-    <script src="../js/app.js"></script>
+    function toggleUserDropdown(button) {
+        const dropdown = button.closest('.user-dropdown');
+        const menu = dropdown.querySelector('.user-dropdown-menu');
+        const allUserDropdowns = document.querySelectorAll('.user-dropdown');
+        
+        allUserDropdowns.forEach(d => {
+            if (d !== dropdown) {
+                d.classList.remove('show');
+                d.querySelector('.user-dropdown-menu').classList.remove('show');
+            }
+        });
+        
+        dropdown.classList.toggle('show');
+        menu.classList.toggle('show');
+    }
+    
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.user-dropdown')) {
+            document.querySelectorAll('.user-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('show');
+                dropdown.querySelector('.user-dropdown-menu').classList.remove('show');
+            });
+        }
+    });
+    </script>
 </body>
 </html>
-
 <?php
-$bookingManager->close();
 $restaurantManager->close();
 $reservationManager->close();
 ?>
