@@ -1,310 +1,337 @@
 <?php
 /**
  * Reservation Class
- * Handles restaurant reservation operations
+ * Handles reservation management
  */
 
-require_once 'Database.php';
+require_once __DIR__ . '/config.php';
 
 class Reservation {
-    private $db;
+    private $conn;
     private $table = 'reservations';
-    private $managerTable = 'restaurant_managers';
-
+    
     public function __construct() {
-        $this->db = new Database();
+        $database = new Database();
+        $this->conn = $database->getConnection();
     }
+    
+    /**
+     * Create reservation
+     */
+    public function createReservation($restaurant_id, $customer_name, $customer_email, $customer_phone, $date, $time, $guests, $special_requests = null, $customer_id = null) {
+        // Validate Capacity first
+        if (!$this->isTimeSlotAvailable($restaurant_id, $date, $time, $guests)) {
+            return ['success' => false, 'message' => 'Restaurant is fully booked for this time slot. Please choose another time.'];
+        }
 
+        $sql = "INSERT INTO {$this->table} (restaurant_id, customer_id, customer_name, customer_email, customer_phone, date, time, guests, special_requests) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("iisssssis", $restaurant_id, $customer_id, $customer_name, $customer_email, $customer_phone, $date, $time, $guests, $special_requests);
+        
+        if ($stmt->execute()) {
+            return [
+                'success' => true,
+                'message' => 'Reservation created successfully',
+                'reservation_id' => $this->conn->insert_id
+            ];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to create reservation: ' . $stmt->error];
+    }
+    
+    /**
+     * Check if time slot has capacity
+     */
+    private function isTimeSlotAvailable($restaurant_id, $date, $time, $requested_guests) {
+        // 1. Get Seating Capacity
+        $capSql = "SELECT seating_capacity FROM restaurants WHERE id = ?";
+        $stmt = $this->conn->prepare($capSql);
+        $stmt->bind_param("i", $restaurant_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $capacity = 0;
+        if ($row = $res->fetch_assoc()) {
+            $capacity = $row['seating_capacity'];
+        }
+        $stmt->close();
+        
+        if ($capacity === 0) return true; // Fail-safe if capacity not set
+
+        // 2. Sum existing guests for this date/time (active reservations only)
+        // We match strict time slot for simplicity. 
+        $sql = "SELECT SUM(guests) as total_guests FROM reservations 
+                WHERE restaurant_id = ? 
+                AND date = ? 
+                AND time = ? 
+                AND status IN ('pending', 'confirmed')";
+                
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("iss", $restaurant_id, $date, $time);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $current_guests = 0;
+        if ($row = $result->fetch_assoc()) {
+            $current_guests = (int)$row['total_guests'];
+        }
+        $stmt->close();
+        
+        return ($current_guests + $requested_guests) <= $capacity;
+    }
+    
     /**
      * Get all reservations
      */
     public function getAllReservations() {
-        $query = "SELECT * FROM {$this->table} ORDER BY date DESC, time DESC";
-
-        try {
-            return $this->db->select($query);
-        } catch (Exception $e) {
-            return [];
+        $sql = "SELECT r.*, rest.name as restaurant_name 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                ORDER BY r.date DESC, r.time DESC";
+        $result = $this->conn->query($sql);
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
+        
+        return $reservations;
     }
-
-    public function getReservationsForManager($managerId) {
-        $query = "SELECT res.*
-                  FROM {$this->table} res
-                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
-                  WHERE rm.manager_id = ?
-                  ORDER BY res.date DESC, res.time DESC";
-        $params = [$managerId];
-        $paramTypes = "i";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    public function getReservationsForManagerByRestaurant($managerId, $restaurantId) {
-        $query = "SELECT res.*
-                  FROM {$this->table} res
-                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
-                  WHERE rm.manager_id = ? AND res.restaurant_id = ?
-                  ORDER BY res.date DESC, res.time DESC";
-        $params = [$managerId, $restaurantId];
-        $paramTypes = "ii";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    public function getReservationsForManagerByStatus($managerId, $status) {
-        $query = "SELECT res.*
-                  FROM {$this->table} res
-                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
-                  WHERE rm.manager_id = ? AND res.status = ?
-                  ORDER BY res.date DESC, res.time DESC";
-        $params = [$managerId, $status];
-        $paramTypes = "is";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Get reservations by restaurant
-     */
-    public function getReservationsByRestaurant($restaurantId) {
-        $query = "SELECT * FROM {$this->table} WHERE restaurant_id = ? ORDER BY date DESC, time DESC";
-        $params = [$restaurantId];
-        $paramTypes = "i";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
+    
     /**
      * Get reservation by ID
      */
     public function getReservationById($id) {
-        $query = "SELECT * FROM {$this->table} WHERE id = ?";
-        $params = [$id];
-        $paramTypes = "i";
-
-        try {
-            $result = $this->db->select($query, $params, $paramTypes);
-            return !empty($result) ? $result[0] : null;
-        } catch (Exception $e) {
-            return null;
+        $sql = "SELECT r.*, rest.name as restaurant_name 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                WHERE r.id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            return $result->fetch_assoc();
         }
+        
+        return null;
     }
-
+    
     /**
-     * Create a new reservation
+     * Get reservations by restaurant
      */
-    public function createReservation($restaurantId, $customerName, $customerEmail, $customerPhone, $date, $time, $guests, $specialRequests = null) {
-        $query = "INSERT INTO {$this->table} (restaurant_id, customer_name, customer_email, customer_phone, date, time, guests, special_requests) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        $params = [$restaurantId, $customerName, $customerEmail, $customerPhone, $date, $time, $guests, $specialRequests];
-        $paramTypes = "isssssis";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success']) {
-                return [
-                    'success' => true,
-                    'message' => 'Reservation created successfully',
-                    'reservation_id' => $result['insert_id']
-                ];
-            } else {
-                return ['success' => false, 'message' => 'Failed to create reservation'];
-            }
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+    public function getReservationsByRestaurant($restaurant_id) {
+        $sql = "SELECT * FROM {$this->table} WHERE restaurant_id = ? ORDER BY date DESC, time DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $restaurant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
+        
+        return $reservations;
     }
-
+    
     /**
-     * Update reservation status
+     * Get reservations by customer email
      */
-    public function updateReservationStatus($id, $status) {
-        $validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
-        if (!in_array($status, $validStatuses)) {
-            return ['success' => false, 'message' => 'Invalid status'];
+    public function getReservationsByCustomer($email) {
+        $sql = "SELECT r.*, rest.name as restaurant_name 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                WHERE r.customer_email = ? 
+                ORDER BY r.date DESC, r.time DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
-
-        $query = "UPDATE {$this->table} SET status = ?, updated_at = NOW() WHERE id = ?";
-        $params = [$status, $id];
-        $paramTypes = "si";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
-                return [
-                    'success' => true,
-                    'message' => 'Reservation status updated successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to update reservation status'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
-        }
+        
+        return $reservations;
     }
-
+    
     /**
-     * Update reservation details
+     * Get reservations by date
      */
-    public function updateReservation($id, $date, $time, $guests, $status, $specialRequests = null) {
-        $query = "UPDATE {$this->table} SET date = ?, time = ?, guests = ?, status = ?, special_requests = ?, updated_at = NOW() WHERE id = ?";
-        $params = [$date, $time, $guests, $status, $specialRequests, $id];
-        $paramTypes = "ssissi";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success']) {
-                return [
-                    'success' => true,
-                    'message' => 'Reservation updated successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to update reservation'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
+    public function getReservationsByDate($date) {
+        $sql = "SELECT r.*, rest.name as restaurant_name 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                WHERE r.date = ? 
+                ORDER BY r.time ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $date);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
+        
+        return $reservations;
     }
-
-    /**
-     * Delete reservation
-     */
-    public function deleteReservation($id) {
-        $query = "DELETE FROM {$this->table} WHERE id = ?";
-        $params = [$id];
-        $paramTypes = "i";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
-                return [
-                    'success' => true,
-                    'message' => 'Reservation deleted successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to delete reservation'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
-        }
-    }
-
+    
     /**
      * Get reservations by status
      */
     public function getReservationsByStatus($status) {
-        $query = "SELECT * FROM {$this->table} WHERE status = ? ORDER BY date DESC, time DESC";
-        $params = [$status];
-        $paramTypes = "s";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
+        $sql = "SELECT r.*, rest.name as restaurant_name 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                WHERE r.status = ? 
+                ORDER BY r.date DESC, r.time DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $status);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
+        
+        return $reservations;
+    }
+    
+    /**
+     * Update reservation status
+     */
+    public function updateStatus($id, $status) {
+        $validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
+        if (!in_array($status, $validStatuses)) {
+            return ['success' => false, 'message' => 'Invalid status'];
+        }
+        
+        $sql = "UPDATE {$this->table} SET status = ? WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("si", $status, $id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Status updated successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to update status'];
+    }
+    
+    /**
+     * Update reservation
+     */
+    public function updateReservation($id, $date, $time, $guests, $special_requests = null) {
+        $sql = "UPDATE {$this->table} SET date = ?, time = ?, guests = ?, special_requests = ? WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("ssisi", $date, $time, $guests, $special_requests, $id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Reservation updated successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to update reservation'];
+    }
+    
+    /**
+     * Cancel reservation
+     */
+    public function cancelReservation($id) {
+        return $this->updateStatus($id, 'cancelled');
+    }
+    
+    /**
+     * Delete reservation
+     */
+    public function deleteReservation($id) {
+        $sql = "DELETE FROM {$this->table} WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Reservation deleted successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to delete reservation'];
     }
 
     /**
-     * Get reservations by restaurant and status
+     * Get reservations by customer ID
      */
-    public function getReservationsByRestaurantAndStatus($restaurantId, $status) {
-        $query = "SELECT * FROM {$this->table} WHERE restaurant_id = ? AND status = ? ORDER BY date DESC, time DESC";
-        $params = [$restaurantId, $status];
-        $paramTypes = "is";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
+    public function getReservationsByCustomerId($customer_id) {
+        $sql = "SELECT r.id, r.restaurant_id, r.date as reservation_date, r.guests as party_size, r.status, rest.name as restaurant_name, rest.cuisine, rest.image 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                WHERE r.customer_id = ? 
+                ORDER BY r.date DESC 
+                LIMIT 5";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $customer_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
+        
+        return $reservations;
     }
-
+    
     /**
-     * Get upcoming reservations for a restaurant
+     * Get all reservations by customer ID (no limit)
      */
-    public function getUpcomingReservations($restaurantId, $days = 30) {
-        $query = "SELECT * FROM {$this->table} WHERE restaurant_id = ? AND date >= CURDATE() AND date <= DATE_ADD(CURDATE(), INTERVAL ? DAY) ORDER BY date, time";
-        $params = [$restaurantId, $days];
-        $paramTypes = "ii";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
+    public function getAllReservationsByCustomerId($customer_id) {
+        $sql = "SELECT r.*, rest.name as restaurant_name, rest.cuisine, rest.address, rest.image 
+                FROM {$this->table} r 
+                LEFT JOIN restaurants rest ON r.restaurant_id = rest.id 
+                WHERE r.customer_id = ? 
+                ORDER BY r.date DESC, r.time DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $customer_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $reservations = [];
+        while ($row = $result->fetch_assoc()) {
+            $reservations[] = $row;
         }
+        
+        return $reservations;
     }
-
+    
     /**
-     * Get reservation count by date range
+     * Get reservation counts by status
      */
-    public function getReservationCountByDateRange($startDate, $endDate) {
-        $query = "SELECT COUNT(*) as count FROM {$this->table} WHERE date BETWEEN ? AND ?";
-        $params = [$startDate, $endDate];
-        $paramTypes = "ss";
-
-        try {
-            $result = $this->db->select($query, $params, $paramTypes);
-            return $result[0]['count'] ?? 0;
-        } catch (Exception $e) {
-            return 0;
+    public function getReservationCounts() {
+        $sql = "SELECT status, COUNT(*) as count FROM {$this->table} GROUP BY status";
+        $result = $this->conn->query($sql);
+        
+        $counts = [
+            'pending' => 0,
+            'confirmed' => 0,
+            'cancelled' => 0,
+            'completed' => 0,
+            'total' => 0
+        ];
+        
+        while ($row = $result->fetch_assoc()) {
+            $counts[$row['status']] = (int)$row['count'];
+            $counts['total'] += (int)$row['count'];
         }
+        
+        return $counts;
     }
-
-    public function getReservationCountByDateRangeForManager($managerId, $startDate, $endDate) {
-        $query = "SELECT COUNT(*) as count
-                  FROM {$this->table} res
-                  INNER JOIN {$this->managerTable} rm ON rm.restaurant_id = res.restaurant_id
-                  WHERE rm.manager_id = ? AND res.date BETWEEN ? AND ?";
-        $params = [$managerId, $startDate, $endDate];
-        $paramTypes = "iss";
-
-        try {
-            $result = $this->db->select($query, $params, $paramTypes);
-            return $result[0]['count'] ?? 0;
-        } catch (Exception $e) {
-            return 0;
-        }
-    }
-
+    
     /**
      * Close database connection
      */
     public function close() {
-        $this->db->close();
+        if ($this->conn) {
+            $this->conn->close();
+        }
     }
 }
 ?>
