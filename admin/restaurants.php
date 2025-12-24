@@ -307,18 +307,25 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                 <?php endif; ?>
                 
                 <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-                <div class="alert alert-warning" role="alert">
-                    <h4 class="alert-heading">Confirm Deletion</h4>
-                    <p><?php echo htmlspecialchars($message); ?></p>
-                    <hr>
-                    <div class="d-flex">
-                        <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
-                        <form method="GET" class="d-inline">
-                            <input type="hidden" name="delete_confirmed" value="1">
-                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                            <input type="hidden" name="type" value="<?php echo $deleteItemType; ?>">
-                            <button type="submit" class="btn btn-danger">Yes, Delete</button>
-                        </form>
+                <div class="page-overlay" role="dialog" aria-modal="true">
+                    <a class="page-overlay__backdrop" href="restaurants.php" aria-label="Close"></a>
+                    <div class="page-overlay__panel">
+                        <div class="page-overlay__panel-header">
+                            <h4 class="page-overlay__panel-title">Confirm Deletion</h4>
+                            <a href="restaurants.php" class="btn btn-secondary">Close</a>
+                        </div>
+                        <div class="page-overlay__panel-body">
+                            <p><?php echo htmlspecialchars($message); ?></p>
+                            <div class="page-overlay__panel-actions">
+                                <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
+                                <form method="GET" class="d-inline">
+                                    <input type="hidden" name="delete_confirmed" value="1">
+                                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                                    <input type="hidden" name="type" value="<?php echo $deleteItemType; ?>">
+                                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -379,11 +386,14 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                 <?php endif; ?>
                 
                 <?php if (isset($showEditForm) && $showEditForm): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Edit Restaurant</h5>
-                    </div>
-                    <div class="card-body">
+                <div class="page-overlay" role="dialog" aria-modal="true">
+                    <a class="page-overlay__backdrop" href="restaurants.php" aria-label="Close"></a>
+                    <div class="page-overlay__panel page-overlay__panel--drawer">
+                        <div class="page-overlay__panel-header">
+                            <h5 class="page-overlay__panel-title">Edit Restaurant</h5>
+                            <a href="restaurants.php" class="btn btn-secondary">Close</a>
+                        </div>
+                        <div class="page-overlay__panel-body">
                         <form method="POST">
                             <input type="hidden" name="action" value="update_restaurant">
                             <input type="hidden" name="id" value="<?php echo htmlspecialchars($editRestaurant['id']); ?>">
@@ -434,14 +444,16 @@ $menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($sel
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <div class="page-overlay__panel-actions">
                                 <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
                                 <button type="submit" class="btn btn-primary">Update Restaurant</button>
                             </div>
                         </form>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
+
 
                 <!-- Restaurants List -->
                 <div class="row">

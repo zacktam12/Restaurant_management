@@ -251,28 +251,38 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                 <?php endif; ?>
                 
                 <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-                <div class="alert alert-warning" role="alert">
-                    <h4 class="alert-heading">Confirm Deletion</h4>
-                    <p><?php echo htmlspecialchars($message); ?></p>
-                    <hr>
-                    <div class="d-flex">
-                        <a href="reservations.php" class="btn btn-secondary me-2">Cancel</a>
-                        <form method="GET" class="d-inline">
-                            <input type="hidden" name="delete_confirmed" value="1">
-                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                            <button type="submit" class="btn btn-danger">Yes, Delete Reservation</button>
-                        </form>
+                <div class="page-overlay" role="dialog" aria-modal="true">
+                    <a class="page-overlay__backdrop" href="reservations.php" aria-label="Close"></a>
+                    <div class="page-overlay__panel">
+                        <div class="page-overlay__panel-header">
+                            <h4 class="page-overlay__panel-title">Confirm Deletion</h4>
+                            <a href="reservations.php" class="btn btn-secondary">Close</a>
+                        </div>
+                        <div class="page-overlay__panel-body">
+                            <p><?php echo htmlspecialchars($message); ?></p>
+                            <div class="page-overlay__panel-actions">
+                                <a href="reservations.php" class="btn btn-secondary">Cancel</a>
+                                <form method="GET" class="d-inline">
+                                    <input type="hidden" name="delete_confirmed" value="1">
+                                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                                    <button type="submit" class="btn btn-danger">Yes, Delete Reservation</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
 
                 <!-- Edit Reservation Form -->
                 <?php if ($editReservation && $allowAdminOperationalActions): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Edit Reservation</h5>
-                    </div>
-                    <div class="card-body">
+                <div class="page-overlay" role="dialog" aria-modal="true">
+                    <a class="page-overlay__backdrop" href="reservations.php" aria-label="Close"></a>
+                    <div class="page-overlay__panel page-overlay__panel--drawer">
+                        <div class="page-overlay__panel-header">
+                            <h5 class="page-overlay__panel-title">Edit Reservation</h5>
+                            <a href="reservations.php" class="btn btn-secondary">Close</a>
+                        </div>
+                        <div class="page-overlay__panel-body">
                         <form method="POST" action="reservations.php">
                             <input type="hidden" name="action" value="update_reservation">
                             <input type="hidden" name="id" value="<?php echo $editReservation['id']; ?>">
@@ -314,11 +324,12 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
                                 <textarea class="form-control" id="special_requests" name="special_requests" rows="2"><?php echo htmlspecialchars($editReservation['special_requests'] ?? ''); ?></textarea>
                             </div>
                             
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <div class="page-overlay__panel-actions">
                                 <a href="reservations.php" class="btn btn-secondary">Cancel</a>
                                 <button type="submit" class="btn btn-primary">Update Reservation</button>
                             </div>
                         </form>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>

@@ -210,17 +210,24 @@ $taxis = array_filter($allServices, function($service) { return $service['type']
         <?php Alert::display(); ?>
         
         <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-        <div class="alert alert-warning shadow-sm" role="alert">
-            <h4 class="alert-heading">Confirm Deletion</h4>
-            <p>Are you sure you want to delete <strong><?php echo htmlspecialchars($confirmService['name']); ?></strong>? This action cannot be undone.</p>
-            <hr>
-            <div class="d-flex">
-                <a href="services.php" class="btn btn-secondary me-2">Cancel</a>
-                <form method="GET" class="d-inline">
-                    <input type="hidden" name="delete_confirmed" value="1">
-                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                    <button type="submit" class="btn btn-danger">Yes, Delete Service</button>
-                </form>
+        <div class="page-overlay" role="dialog" aria-modal="true">
+            <a class="page-overlay__backdrop" href="services.php" aria-label="Close"></a>
+            <div class="page-overlay__panel">
+                <div class="page-overlay__panel-header">
+                    <h4 class="page-overlay__panel-title">Confirm Deletion</h4>
+                    <a href="services.php" class="btn btn-secondary">Close</a>
+                </div>
+                <div class="page-overlay__panel-body">
+                    <p>Are you sure you want to delete <strong><?php echo htmlspecialchars($confirmService['name']); ?></strong>? This action cannot be undone.</p>
+                    <div class="page-overlay__panel-actions">
+                        <a href="services.php" class="btn btn-secondary">Cancel</a>
+                        <form method="GET" class="d-inline">
+                            <input type="hidden" name="delete_confirmed" value="1">
+                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                            <button type="submit" class="btn btn-danger">Yes, Delete Service</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
         <?php endif; ?>
