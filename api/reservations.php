@@ -1,173 +1,133 @@
 <?php
 /**
- * Reservations API
- * Handles restaurant reservation operations
+ * Reservation API Endpoint
+ * Handles REST API requests for reservations
  */
+
+require_once '../backend/config.php';
+require_once '../backend/Reservation.php';
+require_once '../backend/ApiResponse.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-require_once '../backend/config.php';
-require_once '../backend/Reservation.php';
-
+$method = $_SERVER['REQUEST_METHOD'];
 $reservationManager = new Reservation();
 
-try {
-    // Get request data
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    if (!$input) {
-        $input = $_POST;
-    }
-    
-    $method = $_SERVER['REQUEST_METHOD'];
-    $pathInfo = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '';
-    
-    // Parse path info to get ID if present
-    $pathParts = explode('/', trim($pathInfo, '/'));
-    $id = isset($pathParts[0]) && is_numeric($pathParts[0]) ? (int)$pathParts[0] : null;
-    
-    switch ($method) {
-        case 'GET':
-            if ($id) {
-                // Get specific reservation
-                $reservation = $reservationManager->getReservationById($id);
-                if ($reservation) {
-                    echo json_encode([
-                        'success' => true,
-                        'data' => $reservation
-                    ]);
-                } else {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Reservation not found'
-                    ]);
-                }
+$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+
+switch ($method) {
+    case 'GET':
+        if ($id) {
+            $reservation = $reservationManager->getReservationById($id);
+            if ($reservation) {
+                ApiResponse::sendSuccess($reservation, 'Reservation retrieved successfully');
             } else {
-                // Get reservations by restaurant or status
-                $restaurantId = isset($_GET['restaurant_id']) ? (int)$_GET['restaurant_id'] : null;
-                $status = isset($_GET['status']) ? $_GET['status'] : null;
-                
-                if ($restaurantId && $status) {
-                    // This would require a new method in Reservation class
-                    $reservations = [];
-                    // For now, we'll just get by restaurant and filter in PHP
-                    $allReservations = $reservationManager->getReservationsByRestaurant($restaurantId);
-                    foreach ($allReservations as $reservation) {
-                        if ($reservation['status'] == $status) {
-                            $reservations[] = $reservation;
-                        }
-                    }
-                } else if ($restaurantId) {
-                    $reservations = $reservationManager->getReservationsByRestaurant($restaurantId);
-                } else if ($status) {
-                    $reservations = $reservationManager->getReservationsByStatus($status);
-                } else {
-                    $reservations = $reservationManager->getAllReservations();
-                }
-                
-                echo json_encode([
-                    'success' => true,
-                    'data' => $reservations
-                ]);
+                ApiResponse::sendError('Reservation not found', 404);
             }
-            break;
-            
-        case 'POST':
-            // Create new reservation
-            if (!isset($input['restaurant_id']) || !isset($input['customer_name']) || 
-                !isset($input['customer_email']) || !isset($input['customer_phone']) ||
-                !isset($input['date']) || !isset($input['time']) || !isset($input['guests'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Restaurant ID, customer name, email, phone, date, time, and guests are required'
-                ]);
-                exit();
+        } else if (isset($_GET['restaurant_id'])) {
+            $reservations = $reservationManager->getReservationsByRestaurant($_GET['restaurant_id']);
+            ApiResponse::sendSuccess($reservations, 'Restaurant reservations retrieved');
+        } else if (isset($_GET['customer_email'])) {
+            $reservations = $reservationManager->getReservationsByCustomer($_GET['customer_email']);
+            ApiResponse::sendSuccess($reservations, 'Customer reservations retrieved');
+        } else if (isset($_GET['date'])) {
+            $reservations = $reservationManager->getReservationsByDate($_GET['date']);
+            ApiResponse::sendSuccess($reservations, 'Date reservations retrieved');
+        } else if (isset($_GET['status'])) {
+            $reservations = $reservationManager->getReservationsByStatus($_GET['status']);
+            ApiResponse::sendSuccess($reservations, 'Status reservations retrieved');
+        } else {
+            $reservations = $reservationManager->getAllReservations();
+            ApiResponse::sendSuccess($reservations, 'All reservations retrieved');
+        }
+        break;
+        
+    case 'POST':
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            ApiResponse::sendError('Invalid JSON input', 400);
+        }
+        
+        $required = ['restaurant_id', 'customer_name', 'customer_email', 'customer_phone', 'date', 'time', 'guests'];
+        foreach ($required as $field) {
+            if (!isset($input[$field]) || empty($input[$field])) {
+                ApiResponse::sendError("Missing required field: {$field}", 400);
             }
-            
-            $result = $reservationManager->createReservation(
-                $input['restaurant_id'],
-                $input['customer_name'],
-                $input['customer_email'],
-                $input['customer_phone'],
+        }
+        
+        $result = $reservationManager->createReservation(
+            $input['restaurant_id'],
+            $input['customer_name'],
+            $input['customer_email'],
+            $input['customer_phone'],
+            $input['date'],
+            $input['time'],
+            $input['guests'],
+            $input['special_requests'] ?? null
+        );
+        
+        if ($result['success']) {
+            ApiResponse::sendSuccess(['reservation_id' => $result['reservation_id']], $result['message'], 201);
+        } else {
+            ApiResponse::sendError($result['message'], 400);
+        }
+        break;
+        
+    case 'PUT':
+        if (!$id) {
+            ApiResponse::sendError('Reservation ID is required', 400);
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            ApiResponse::sendError('Invalid JSON input', 400);
+        }
+        
+        if (isset($input['status'])) {
+            $result = $reservationManager->updateStatus($id, $input['status']);
+        } else {
+            $result = $reservationManager->updateReservation(
+                $id,
                 $input['date'],
                 $input['time'],
                 $input['guests'],
-                isset($input['special_requests']) ? $input['special_requests'] : null
+                $input['special_requests'] ?? null
             );
-            
-            echo json_encode($result);
-            break;
-            
-        case 'PUT':
-            // Update reservation
-            if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Reservation ID is required'
-                ]);
-                exit();
-            }
-            
-            // Check if we're updating status or details
-            if (isset($input['status'])) {
-                // Update status
-                $result = $reservationManager->updateReservationStatus($id, $input['status']);
-            } else if (isset($input['date']) && isset($input['time']) && isset($input['guests'])) {
-                // Update details
-                $result = $reservationManager->updateReservation(
-                    $id,
-                    $input['date'],
-                    $input['time'],
-                    $input['guests'],
-                    isset($input['special_requests']) ? $input['special_requests'] : null
-                );
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Either status or date/time/guests must be provided'
-                ]);
-                exit();
-            }
-            
-            echo json_encode($result);
-            break;
-            
-        case 'DELETE':
-            // Delete reservation
-            if (!$id) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Reservation ID is required'
-                ]);
-                exit();
-            }
-            
-            $result = $reservationManager->deleteReservation($id);
-            echo json_encode($result);
-            break;
-            
-        default:
-            echo json_encode([
-                'success' => false,
-                'message' => 'Method not allowed'
-            ]);
-            break;
-    }
-    
-} catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
-    ]);
+        }
+        
+        if ($result['success']) {
+            ApiResponse::sendSuccess(null, $result['message']);
+        } else {
+            ApiResponse::sendError($result['message'], 400);
+        }
+        break;
+        
+    case 'DELETE':
+        if (!$id) {
+            ApiResponse::sendError('Reservation ID is required', 400);
+        }
+        
+        $result = $reservationManager->deleteReservation($id);
+        
+        if ($result['success']) {
+            ApiResponse::sendSuccess(null, $result['message']);
+        } else {
+            ApiResponse::sendError($result['message'], 400);
+        }
+        break;
+        
+    default:
+        ApiResponse::sendError('Method not allowed', 405);
 }
 
 $reservationManager->close();

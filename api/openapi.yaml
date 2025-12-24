@@ -1,0 +1,506 @@
+openapi: 3.0.3
+info:
+  title: Restaurant Management Service API
+  description: |
+    **Service Provider API for Restaurant Management System**
+    
+    This API allows external systems (other groups) to:
+    - Discover and browse available restaurants
+    - Make reservations on behalf of their users
+    - Retrieve restaurant details, menus, and ratings
+    - Manage bookings programmatically
+    
+    **Service Type**: Restaurant Booking Service
+    **Provider**: Restaurant Management Group
+    **Integration**: REST API with JSON responses
+  version: 1.0.0
+  contact:
+    name: Restaurant Management System
+    email: api@restaurant-system.com
+
+servers:
+  - url: http://localhost/rest/api
+    description: Local development server
+  - url: https://api.restaurant-system.com
+    description: Production server
+
+tags:
+  - name: Restaurants
+    description: Restaurant discovery and information
+  - name: Reservations
+    description: Table booking and reservation management
+  - name: Menus
+    description: Restaurant menu items
+  - name: Ratings
+    description: Restaurant ratings and reviews
+
+paths:
+  /service-provider/restaurants:
+    get:
+      tags:
+        - Restaurants
+      summary: Get all available restaurants
+      description: Returns a list of all restaurants available for booking
+      operationId: getRestaurants
+      parameters:
+        - name: cuisine
+          in: query
+          description: Filter by cuisine type
+          required: false
+          schema:
+            type: string
+            example: Italian
+        - name: price_range
+          in: query
+          description: Filter by price range
+          required: false
+          schema:
+            type: string
+            enum: ['$', '$$', '$$$', '$$$$']
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Restaurant'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /service-provider/restaurants/{id}:
+    get:
+      tags:
+        - Restaurants
+      summary: Get restaurant details
+      description: Returns detailed information about a specific restaurant
+      operationId: getRestaurantById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Restaurant ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/RestaurantDetailed'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /service-provider/reservations:
+    post:
+      tags:
+        - Reservations
+      summary: Create a new reservation
+      description: |
+        Book a table at a restaurant. This endpoint is used by external systems
+        (tour operators, hotel booking systems) to make reservations on behalf of their users.
+      operationId: createReservation
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '201':
+          description: Reservation created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Reservation created successfully
+                  data:
+                    type: object
+                    properties:
+                      reservation_id:
+                        type: integer
+                        example: 123
+                      status:
+                        type: string
+                        example: pending
+                      confirmation_code:
+                        type: string
+                        example: REST-2025-ABC123
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    get:
+      tags:
+        - Reservations
+      summary: Get reservations
+      description: Retrieve reservations made through the API
+      operationId: getReservations
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: external_booking_id
+          in: query
+          description: External booking reference from consumer system
+          schema:
+            type: string
+            example: TOUR-2025-XYZ789
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /service-provider/menu/{restaurant_id}:
+    get:
+      tags:
+        - Menus
+      summary: Get restaurant menu
+      description: Returns menu items for a specific restaurant
+      operationId: getMenu
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /service-provider/availability:
+    get:
+      tags:
+        - Reservations
+      summary: Check availability
+      description: Check if a restaurant has availability for a given date/time
+      operationId: checkAvailability
+      parameters:
+        - name: restaurant_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2025-12-25"
+        - name: time
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "19:00"
+        - name: guests
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 4
+      responses:
+        '200':
+          description: Availability check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  available:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Table available for 4 guests"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for external service authentication
+
+  schemas:
+    Restaurant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "The Golden Fork"
+        cuisine:
+          type: string
+          example: "Italian"
+        address:
+          type: string
+          example: "123 Main Street, Downtown"
+        phone:
+          type: string
+          example: "+1-555-0001"
+        price_range:
+          type: string
+          example: "$$$"
+        rating:
+          type: number
+          format: float
+          example: 4.5
+        image:
+          type: string
+          example: "https://example.com/images/restaurant.jpg"
+
+    RestaurantDetailed:
+      allOf:
+        - $ref: '#/components/schemas/Restaurant'
+        - type: object
+          properties:
+            description:
+              type: string
+              example: "Experience authentic Italian cuisine in an elegant setting"
+            seating_capacity:
+              type: integer
+              example: 80
+            opening_hours:
+              type: string
+              example: "11:00 AM - 10:00 PM"
+            available_time_slots:
+              type: array
+              items:
+                type: string
+              example: ["11:00", "11:30", "12:00", "18:00", "19:00"]
+
+    ReservationRequest:
+      type: object
+      required:
+        - restaurant_id
+        - customer_name
+        - customer_email
+        - customer_phone
+        - date
+        - time
+        - guests
+      properties:
+        restaurant_id:
+          type: integer
+          example: 1
+        customer_name:
+          type: string
+          example: "John Doe"
+        customer_email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        customer_phone:
+          type: string
+          example: "+1-555-1234"
+        date:
+          type: string
+          format: date
+          example: "2025-12-25"
+        time:
+          type: string
+          example: "19:00"
+        guests:
+          type: integer
+          minimum: 1
+          maximum: 20
+          example: 4
+        special_requests:
+          type: string
+          example: "Window seat, vegetarian options"
+        external_booking_id:
+          type: string
+          description: Reference ID from the external system (tour, hotel, etc.)
+          example: "TOUR-2025-XYZ789"
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        restaurant_id:
+          type: integer
+          example: 1
+        restaurant_name:
+          type: string
+          example: "The Golden Fork"
+        customer_name:
+          type: string
+          example: "John Doe"
+        customer_email:
+          type: string
+          example: "john.doe@example.com"
+        customer_phone:
+          type: string
+          example: "+1-555-1234"
+        date:
+          type: string
+          format: date
+          example: "2025-12-25"
+        time:
+          type: string
+          example: "19:00"
+        guests:
+          type: integer
+          example: 4
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed]
+          example: "confirmed"
+        confirmation_code:
+          type: string
+          example: "REST-2025-ABC123"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-12-20T10:30:00Z"
+
+    MenuItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Margherita Pizza"
+        description:
+          type: string
+          example: "Classic tomato, mozzarella, and basil"
+        price:
+          type: number
+          format: float
+          example: 12.99
+        category:
+          type: string
+          example: "Main Course"
+        available:
+          type: boolean
+          example: true
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Invalid request parameters"
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid API key
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Unauthorized access - invalid API key"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Resource not found"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Internal server error"
