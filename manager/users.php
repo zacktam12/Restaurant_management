@@ -255,17 +255,24 @@ $users = Permission::filterUsersByPermission($currentUserRole, $allUsers);
                 <?php endif; ?>
                 
                 <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-                <div class="alert alert-warning" role="alert">
-                    <h4 class="alert-heading">Confirm Deletion</h4>
-                    <p><?php echo htmlspecialchars($message); ?></p>
-                    <hr>
-                    <div class="d-flex">
-                        <a href="users.php" class="btn btn-secondary me-2">Cancel</a>
-                        <form method="GET" class="d-inline">
-                            <input type="hidden" name="delete_confirmed" value="1">
-                            <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                            <button type="submit" class="btn btn-danger">Yes, Delete User</button>
-                        </form>
+                <div class="page-overlay" role="dialog" aria-modal="true">
+                    <a class="page-overlay__backdrop" href="users.php" aria-label="Close"></a>
+                    <div class="page-overlay__panel">
+                        <div class="page-overlay__panel-header">
+                            <h4 class="page-overlay__panel-title">Confirm Deletion</h4>
+                            <a href="users.php" class="btn btn-secondary">Close</a>
+                        </div>
+                        <div class="page-overlay__panel-body">
+                            <p><?php echo htmlspecialchars($message); ?></p>
+                            <div class="page-overlay__panel-actions">
+                                <a href="users.php" class="btn btn-secondary">Cancel</a>
+                                <form method="GET" class="d-inline">
+                                    <input type="hidden" name="delete_confirmed" value="1">
+                                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
+                                    <button type="submit" class="btn btn-danger">Yes, Delete User</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -317,43 +324,47 @@ $users = Permission::filterUsersByPermission($currentUserRole, $allUsers);
 
                 <!-- Edit User Form -->
                 <?php if ($editUser): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Edit User</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="users.php">
-                            <input type="hidden" name="action" value="update_user">
-                            <input type="hidden" name="id" value="<?php echo $editUser['id']; ?>">
-                            
-                            <div class="mb-3">
-                                <label for="edit_name" class="form-label">Full Name</label>
-                                <input type="text" class="form-control" id="edit_name" name="name" value="<?php echo htmlspecialchars($editUser['name']); ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="edit_email" name="email" value="<?php echo htmlspecialchars($editUser['email']); ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_role" class="form-label">Role</label>
-                                <select class="form-select" id="edit_role" name="role" required>
-                                    <option value="customer" <?php echo $editUser['role'] == 'customer' ? 'selected' : ''; ?>>Customer</option>
-                                </select>
-                                <small class="form-text text-muted">Managers can only manage customer accounts</small>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_phone" class="form-label">Phone</label>
-                                <input type="text" class="form-control" id="edit_phone" name="phone" value="<?php echo htmlspecialchars($editUser['phone'] ?? ''); ?>">
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_professional_details" class="form-label">Professional Details</label>
-                                <textarea class="form-control" id="edit_professional_details" name="professional_details" rows="3"><?php echo htmlspecialchars($editUser['professional_details'] ?? ''); ?></textarea>
-                            </div>
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="users.php" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Update User</button>
-                            </div>
-                        </form>
+                <div class="page-overlay" role="dialog" aria-modal="true">
+                    <a class="page-overlay__backdrop" href="users.php" aria-label="Close"></a>
+                    <div class="page-overlay__panel page-overlay__panel--drawer">
+                        <div class="page-overlay__panel-header">
+                            <h5 class="page-overlay__panel-title">Edit User</h5>
+                            <a href="users.php" class="btn btn-secondary">Close</a>
+                        </div>
+                        <div class="page-overlay__panel-body">
+                            <form method="POST" action="users.php">
+                                <input type="hidden" name="action" value="update_user">
+                                <input type="hidden" name="id" value="<?php echo $editUser['id']; ?>">
+                                
+                                <div class="mb-3">
+                                    <label for="edit_name" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="edit_name" name="name" value="<?php echo htmlspecialchars($editUser['name']); ?>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="edit_email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="edit_email" name="email" value="<?php echo htmlspecialchars($editUser['email']); ?>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="edit_role" class="form-label">Role</label>
+                                    <select class="form-select" id="edit_role" name="role" required>
+                                        <option value="customer" <?php echo $editUser['role'] == 'customer' ? 'selected' : ''; ?>>Customer</option>
+                                    </select>
+                                    <small class="form-text text-muted">Managers can only manage customer accounts</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="edit_phone" class="form-label">Phone</label>
+                                    <input type="text" class="form-control" id="edit_phone" name="phone" value="<?php echo htmlspecialchars($editUser['phone'] ?? ''); ?>">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="edit_professional_details" class="form-label">Professional Details</label>
+                                    <textarea class="form-control" id="edit_professional_details" name="professional_details" rows="3"><?php echo htmlspecialchars($editUser['professional_details'] ?? ''); ?></textarea>
+                                </div>
+                                <div class="page-overlay__panel-actions">
+                                    <a href="users.php" class="btn btn-secondary">Cancel</a>
+                                    <button type="submit" class="btn btn-primary">Update User</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
