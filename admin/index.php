@@ -1,260 +1,267 @@
 <?php
 /**
  * Admin Dashboard
- * Main admin interface for Restaurant Management System
+ * Full system access for administrators
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Check if user is logged in and has admin/manager access
-require_once '../backend/Permission.php';
-
-if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user'])) {
+// Check admin access
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || $_SESSION['user']['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
 
-// Require admin role only (managers have their own dashboard)
-Permission::requireAdmin($_SESSION['user']['role']);
-
 require_once '../backend/config.php';
-require_once '../backend/Booking.php';
 require_once '../backend/Restaurant.php';
 require_once '../backend/Reservation.php';
+require_once '../backend/User.php';
+require_once '../backend/Alert.php';
 
-$bookingManager = new Booking();
 $restaurantManager = new Restaurant();
 $reservationManager = new Reservation();
+$userManager = new User();
 
 // Get statistics
-$totalRestaurants = count($restaurantManager->getAllRestaurants());
-$totalReservations = count($reservationManager->getAllReservations());
-$totalBookings = count($bookingManager->getAllBookings());
-$totalTourBookings = count($bookingManager->getBookingsByServiceType('tour'));
+$restaurants = $restaurantManager->getAllRestaurants();
+$reservationCounts = $reservationManager->getReservationCounts();
+$users = $userManager->getAllUsers();
 
-// Get recent tour bookings
-$recentTourBookings = array_slice($bookingManager->getBookingsByServiceType('tour'), 0, 5);
+$totalRestaurants = count($restaurants);
+$totalUsers = count($users);
+$pendingReservations = $reservationCounts['pending'];
+$confirmedReservations = $reservationCounts['confirmed'];
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Restaurant Management System</title>
+    <title>Admin Dashboard - Gebeta (ገበታ)</title>
     <link href="../css/style.css" rel="stylesheet">
-    <link href="../css/enhanced-styles.css" rel="stylesheet">
-    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
-    <link href="../css/admin-layout.css" rel="stylesheet">
-    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="index.php">
-                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
+            <a class="navbar-brand" href="index.php" style="display: flex; align-items: center; gap: 8px;">
+                <img src="../assets/logo.jpg" alt="Logo" style="height: 32px; width: 32px; border-radius: 6px; object-fit: cover;">
+                Gebeta (ገበታ) Admin
             </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
-                    <span class="badge bg-secondary"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
-                </span>
-                <a class="btn btn-outline-light" href="../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="position-sticky pt-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link active" href="index.php">
-                        <span class="custom-icon icon-speedometer2"></span> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="users.php">
-                        <span class="custom-icon icon-people"></span> User Management
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="restaurants.php">
-                        <span class="custom-icon icon-shop"></span> Restaurants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reservations.php">
-                        <span class="custom-icon icon-calendar-check"></span> Reservations
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="services.php">
-                        <span class="custom-icon icon-gear"></span> External Services
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reports.php">
-                        <span class="custom-icon icon-graph-up"></span> Reports
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="api_keys.php">
-                        <span class="custom-icon icon-key"></span> API Keys
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="service_registry.php">
-                        <span class="custom-icon icon-diagram-3"></span> Service Registry
-                    </a>
-                </li>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a class="nav-link active" href="index.php">Dashboard</a></li>
+                <li><a class="nav-link" href="analytics.php">Analytics</a></li>
+                <li><a class="nav-link" href="restaurants.php">Restaurants</a></li>
+                <li><a class="nav-link" href="reservations.php">Reservations</a></li>
+                <li><a class="nav-link" href="users.php">Users</a></li>
             </ul>
+
+            <div style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+                <div class="user-dropdown">
+                    <button class="user-dropdown-toggle" onclick="toggleUserDropdown(this)" type="button">
+                        <div class="user-avatar">
+                            <?php if (!empty($_SESSION['user']['profile_image'])): ?>
+                                <img src="../<?php echo htmlspecialchars($_SESSION['user']['profile_image']); ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <?php else: ?>
+                                <?php echo strtoupper(substr($_SESSION['user']['name'], 0, 1)); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                        </div>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="user-dropdown-menu">
+                        <div class="user-dropdown-header">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                            <div class="user-email"><?php echo htmlspecialchars($_SESSION['user']['email']); ?></div>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <a href="profile.php" class="user-dropdown-item">
+                            <span class="icon">👤</span>
+                            Profile
+                        </a>
+                        <a href="../logout.php" class="user-dropdown-item logout">
+                            <span class="icon">🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
+                <div class="menu-toggle" onclick="toggleMenu()">☰</div>
+            </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">Dashboard</h1>
-        </div>
-
-        <!-- Summary Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-white bg-primary">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Restaurants</h5>
-                        <h2><?php echo $totalRestaurants; ?></h2>
-                        <span class="custom-icon icon-shop float-end fs-1"></span>
-                    </div>
+    <div class="container py-5">
+        <?php Alert::display(); ?>
+        
+        <h1 class="mb-4">Admin Dashboard</h1>
+        
+        <!-- Statistics Cards -->
+        <!-- Statistics Cards -->
+        <div class="row mb-5">
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number"><?php echo $totalRestaurants; ?></div>
+                    <div class="stat-label">Total Restaurants</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Reservations</h5>
-                        <h2><?php echo $totalReservations; ?></h2>
-                        <span class="custom-icon icon-calendar-check float-end fs-1"></span>
-                    </div>
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number"><?php echo $totalUsers; ?></div>
+                    <div class="stat-label">Total Users</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-warning">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Bookings</h5>
-                        <h2><?php echo $totalBookings; ?></h2>
-                        <span class="custom-icon icon-calendar-check float-end fs-1"></span>
-                    </div>
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number" style="color: var(--warning-color);"><?php echo $pendingReservations; ?></div>
+                    <div class="stat-label">Pending Reservations</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-info">
-                    <div class="card-body">
-                        <h5 class="card-title">Tour Bookings</h5>
-                        <h2><?php echo $totalTourBookings; ?></h2>
-                        <span class="custom-icon icon-diagram-3 float-end fs-1"></span>
-                    </div>
+            <div class="col col-md-3 col-sm-6 mb-3">
+                <div class="stat-card h-100">
+                    <div class="stat-number" style="color: var(--success-color);"><?php echo $confirmedReservations; ?></div>
+                    <div class="stat-label">Confirmed Reservations</div>
                 </div>
             </div>
         </div>
-
-        <!-- Recent Tour Bookings -->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Recent Tour Bookings</h5>
-                        <a href="tour_participants.php" class="btn btn-sm btn-primary">View All Tour Participants</a>
-                    </div>
-                            <div class="card-body">
-                                <?php if (empty($recentTourBookings)): ?>
-                                <p class="text-muted text-center">No tour bookings yet</p>
-                                <?php else: ?>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Booking ID</th>
-                                                <th>Customer</th>
-                                                <th>Tour ID</th>
-                                                <th>Participants</th>
-                                                <th>Date</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($recentTourBookings as $booking): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($booking['id']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['customer_id']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['service_id']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['guests'] ?? 'N/A'); ?></td>
-                                                <td><?php echo $booking['date'] ? date('M j, Y', strtotime($booking['date'])) : 'N/A'; ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?php 
-                                                        echo $booking['status'] == 'confirmed' ? 'success' : 
-                                                             ($booking['status'] == 'pending' ? 'warning' : 
-                                                             ($booking['status'] == 'cancelled' ? 'danger' : 'secondary')); ?>">
-                                                        <?php echo ucfirst($booking['status']); ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="restaurants.php?action=add" class="btn btn-primary flex-grow-1">+ Add Restaurant</a>
+                    <a href="users.php?action=add" class="btn btn-secondary flex-grow-1">+ Add User</a>
+                    <a href="reservations.php" class="btn btn-outline-primary flex-grow-1">View All Reservations</a>
                 </div>
-
-                <!-- Quick Links -->
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Quick Links</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3 mb-3">
-                                        <a href="restaurants.php" class="btn btn-outline-primary w-100">
-                                            <i class="bi bi-shop me-2"></i>Manage Restaurants
-                                        </a>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <a href="reservations.php" class="btn btn-outline-success w-100">
-                                            <i class="bi bi-calendar-check me-2"></i>View Reservations
-                                        </a>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <a href="services.php" class="btn btn-outline-warning w-100">
-                                            <i class="bi bi-gear me-2"></i>External Services
-                                        </a>
-                                    </div>
-                                    <div class="col-md-3 mb-3">
-                                        <a href="reports.php" class="btn btn-outline-info w-100">
-                                            <i class="bi bi-graph-up me-2"></i>Detailed Reports
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            </div>
+        </div>
+        
+        <!-- Recent Restaurants -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Restaurants</h5>
+                <a href="restaurants.php" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body px-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Cuisine</th>
+                                <th>Rating</th>
+                                <th>Capacity</th>
+                                <th class="pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $recentRestaurants = array_slice($restaurants, 0, 5);
+                            foreach ($recentRestaurants as $restaurant): 
+                            ?>
+                            <tr>
+                                <td class="ps-4"><?php echo htmlspecialchars($restaurant['name']); ?></td>
+                                <td><span class="badge badge-info"><?php echo htmlspecialchars($restaurant['cuisine']); ?></span></td>
+                                <td><?php echo $restaurant['rating']; ?> ⭐</td>
+                                <td><?php echo $restaurant['seating_capacity']; ?></td>
+                                <td class="pe-4">
+                                    <a href="restaurants.php?action=edit&id=<?php echo $restaurant['id']; ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </main>
+            </div>
+        </div>
+        
+        <!-- Recent Users -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Users</h5>
+                <a href="users.php" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body px-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th class="pe-4">Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $recentUsers = array_slice($users, 0, 5);
+                            foreach ($recentUsers as $user): 
+                            ?>
+                            <tr>
+                                <td class="ps-4"><?php echo htmlspecialchars($user['name']); ?></td>
+                                <td><?php echo htmlspecialchars($user['email']); ?></td>
+                                <td>
+                                    <span class="badge badge-<?php 
+                                        echo $user['role'] === 'admin' ? 'danger' : 
+                                            ($user['role'] === 'manager' ? 'warning' : 'secondary'); 
+                                    ?>">
+                                        <?php echo ucfirst($user['role']); ?>
+                                    </span>
+                                </td>
+                                <td class="pe-4"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
+    
+    <script>
+    function toggleMenu() {
+        document.getElementById('navbarNav').classList.toggle('active');
+    }
 
-    <script src="../js/app.js"></script>
+    // User dropdown toggle functionality
+    function toggleUserDropdown(button) {
+        const dropdown = button.closest('.user-dropdown');
+        const menu = dropdown.querySelector('.user-dropdown-menu');
+        const allUserDropdowns = document.querySelectorAll('.user-dropdown');
+        
+        // Close all other user dropdowns
+        allUserDropdowns.forEach(d => {
+            if (d !== dropdown) {
+                d.classList.remove('show');
+                d.querySelector('.user-dropdown-menu').classList.remove('show');
+            }
+        });
+        
+        // Toggle current dropdown
+        dropdown.classList.toggle('show');
+        menu.classList.toggle('show');
+    }
+    
+    // Close user dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.user-dropdown')) {
+            document.querySelectorAll('.user-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('show');
+                dropdown.querySelector('.user-dropdown-menu').classList.remove('show');
+            });
+        }
+    });
+    </script>
 </body>
 </html>
-
 <?php
-$bookingManager->close();
 $restaurantManager->close();
 $reservationManager->close();
+$userManager->close();
 ?>

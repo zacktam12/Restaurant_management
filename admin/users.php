@@ -1,415 +1,367 @@
 <?php
 /**
- * User Management Page
- * Admin interface for managing users
+ * Admin User Management
+ * CRUD operations for users
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Check if user is logged in and is admin
-require_once '../backend/Permission.php';
-
-if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user'])) {
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || $_SESSION['user']['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
 
-// Require admin access
-Permission::requireAdmin($_SESSION['user']['role']);
-
 require_once '../backend/config.php';
 require_once '../backend/User.php';
+require_once '../backend/Alert.php';
 
 $userManager = new User();
 
-// Handle delete confirmation
-if (isset($_GET['confirm_delete'])) {
-    $userId = $_GET['confirm_delete'];
-    
-    // We'll handle the actual deletion through a GET request
-}
-
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add_user':
-                $name = $_POST['name'] ?? '';
-                $email = $_POST['email'] ?? '';
-                $password = $_POST['password'] ?? '';
-                $role = $_POST['role'] ?? '';
-                $phone = $_POST['phone'] ?? '';
-                $professional_details = $_POST['professional_details'] ?? '';
-                
-                // Validate input
-                if (empty($name) || empty($email) || empty($password) || empty($role)) {
-                    $message = 'Please fill in all required fields.';
-                    $messageType = 'danger';
-                } else {
-                    // Attempt registration
-                    $result = $userManager->register($email, $password, $name, $role, $phone, $professional_details);
-                    
-                    if ($result['success']) {
-                        $message = 'User added successfully!';
-                        $messageType = 'success';
-                    } else {
-                        $message = $result['message'];
-                        $messageType = 'danger';
-                    }
-                }
-                break;
-                
-            case 'update_user':
-                $id = $_POST['id'] ?? '';
-                $name = $_POST['name'] ?? '';
-                $email = $_POST['email'] ?? '';
-                $role = $_POST['role'] ?? '';
-                $phone = $_POST['phone'] ?? '';
-                $professional_details = $_POST['professional_details'] ?? '';
-                
-                if (empty($id) || empty($name) || empty($email) || empty($role)) {
-                    $message = 'Please fill in all required fields.';
-                    $messageType = 'danger';
-                } else {
-                    $result = $userManager->updateUser($id, $name, $email, $role, $phone, $professional_details);
-                    
-                    if ($result['success']) {
-                        $message = 'User updated successfully!';
-                        $messageType = 'success';
-                        // Clear edit mode
-                        if (isset($_GET['edit_user'])) {
-                            unset($_GET['edit_user']);
-                            // Optional: redirect to remove query param
-                            // header("Location: users.php?msg=updated");
-                        }
-                    } else {
-                        $message = $result['message'];
-                        $messageType = 'danger';
-                    }
-                }
-                break;
-                
-            case 'delete_user':
-                $message = 'Delete functionality would be implemented here for user ID: ' . $_POST['id'];
-                $messageType = 'info';
-                break;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'add') {
+        $result = $userManager->register(
+            $_POST['email'],
+            $_POST['password'],
+            $_POST['name'],
+            $_POST['role'],
+            $_POST['phone'] ?? null,
+            $_POST['professional_details'] ?? null
+        );
+        
+        if ($result['success']) {
+            Alert::setSuccess('User created successfully!');
+        } else {
+            Alert::setError($result['message']);
+        }
+    } elseif ($action === 'update_role') {
+        $result = $userManager->updateRole($_POST['id'], $_POST['role']);
+        if ($result['success']) {
+            Alert::setSuccess('User role updated!');
+        } else {
+            Alert::setError($result['message']);
+        }
+    } elseif ($action === 'delete') {
+        if ($_POST['id'] == $_SESSION['user']['id']) {
+            Alert::setError('You cannot delete your own account!');
+        } else {
+            $result = $userManager->deleteUser($_POST['id']);
+            if ($result['success']) {
+                Alert::setSuccess('User deleted successfully!');
+            } else {
+                Alert::setError($result['message']);
+            }
         }
     }
-} elseif (isset($_GET['confirm_delete'])) {
-    // Handle delete confirmation through GET parameters
-    $userId = $_GET['confirm_delete'];
     
-    // Show confirmation message
-    $user = $userManager->getUserById($userId);
-    if ($user) {
-        $message = 'Are you sure you want to delete user "' . htmlspecialchars($user['name']) . '"?';
-        $messageType = 'warning';
-        $showDeleteConfirmation = true;
-    }
+    header('Location: users.php');
+    exit();
 }
 
-// Handle edit request
-$editUser = null;
-if (isset($_GET['edit_user'])) {
-    $editUserId = $_GET['edit_user'];
-    $editUser = $userManager->getUserById($editUserId);
-    if (!$editUser) {
-        $message = 'User not found.';
-        $messageType = 'danger';
-    }
-} else if (isset($_GET['delete_confirmed']) && isset($_GET['id'])) {
-    // Handle confirmed delete
-    $result = $userManager->deleteUser($_GET['id']);
-    if ($result['success']) {
-        $message = 'User deleted successfully.';
-        $messageType = 'success';
-    } else {
-        $message = $result['message'];
-        $messageType = 'danger';
-    }
-}
+$showForm = isset($_GET['action']) && $_GET['action'] === 'add';
 
-$users = $userManager->getAllUsers();
+// Filter by role
+$roleFilter = $_GET['role'] ?? '';
+if ($roleFilter) {
+    $users = $userManager->getUsersByRole($roleFilter);
+} else {
+    $users = $userManager->getAllUsers();
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - Restaurant Management System</title>
+    <title>Manage Users - Admin</title>
     <link href="../css/style.css" rel="stylesheet">
-    <link href="../css/enhanced-styles.css" rel="stylesheet">
-    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
-    <link href="../css/admin-layout.css" rel="stylesheet">
-    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="../admin/index.php">
-                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
+            <a class="navbar-brand" href="index.php" style="display: flex; align-items: center; gap: 8px;">
+                <img src="../assets/logo.jpg" alt="Logo" style="height: 32px; width: 32px; border-radius: 6px; object-fit: cover;">
+                Gebeta (ገበታ) Admin
             </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
-                    <span class="badge bg-secondary"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
-                </span>
-                <a class="btn btn-outline-light" href="../logout.php">Logout</a>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a class="nav-link" href="index.php">Dashboard</a></li>
+                <li><a class="nav-link" href="analytics.php">Analytics</a></li>
+                <li><a class="nav-link" href="restaurants.php">Restaurants</a></li>
+                <li><a class="nav-link" href="reservations.php">Reservations</a></li>
+                <li><a class="nav-link active" href="users.php">Users</a></li>
+            </ul>
+
+            <div style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+                <div class="user-dropdown">
+                    <button class="user-dropdown-toggle" onclick="toggleUserDropdown(this)" type="button">
+                        <div class="user-avatar">
+                            <?php if (!empty($_SESSION['user']['profile_image'])): ?>
+                                <img src="../<?php echo htmlspecialchars($_SESSION['user']['profile_image']); ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <?php else: ?>
+                                <?php echo strtoupper(substr($_SESSION['user']['name'], 0, 1)); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                        </div>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="user-dropdown-menu">
+                        <div class="user-dropdown-header">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                            <div class="user-email"><?php echo htmlspecialchars($_SESSION['user']['email']); ?></div>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <a href="profile.php" class="user-dropdown-item">
+                            <span class="icon">👤</span>
+                            Profile
+                        </a>
+                        <a href="../logout.php" class="user-dropdown-item logout">
+                            <span class="icon">🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
+                <div class="menu-toggle" onclick="toggleMenu()">☰</div>
             </div>
         </div>
     </nav>
 
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="position-sticky pt-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">
-                        <span class="custom-icon icon-speedometer2"></span> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="users.php">
-                        <span class="custom-icon icon-people"></span> User Management
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="restaurants.php">
-                        <span class="custom-icon icon-shop"></span> Restaurants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reservations.php">
-                        <span class="custom-icon icon-calendar-check"></span> Reservations
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="services.php">
-                        <span class="custom-icon icon-gear"></span> External Services
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reports.php">
-                        <span class="custom-icon icon-graph-up"></span> Reports
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="api_keys.php">
-                        <span class="custom-icon icon-key"></span> API Keys
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="service_registry.php">
-                        <span class="custom-icon icon-diagram-3"></span> Service Registry
-                    </a>
-                </li>
-            </ul>
+    <div class="container py-5">
+        <?php Alert::display(); ?>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h1 class="mb-0">Manage Users</h1>
+            <?php if (!$showForm): ?>
+            <a href="users.php?action=add" class="btn btn-primary">+ Add User</a>
+            <?php else: ?>
+            <a href="users.php" class="btn btn-secondary">Back to List</a>
+            <?php endif; ?>
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">User Management</h1>
-            <form method="GET">
-                <input type="hidden" name="show_add_form" value="1">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-plus-lg"></i> Add New User
-                </button>
-            </form>
-        </div>
-                
-                <?php if (isset($message)): ?>
-                <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                    <?php echo htmlspecialchars($message); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-                <div class="page-overlay" role="dialog" aria-modal="true">
-                    <a class="page-overlay__backdrop" href="users.php" aria-label="Close"></a>
-                    <div class="page-overlay__panel">
-                        <div class="page-overlay__panel-header">
-                            <h4 class="page-overlay__panel-title">Confirm Deletion</h4>
-                            <a href="users.php" class="btn btn-secondary">Close</a>
-                        </div>
-                        <div class="page-overlay__panel-body">
-                            <p><?php echo htmlspecialchars($message); ?></p>
-                            <div class="page-overlay__panel-actions">
-                                <a href="users.php" class="btn btn-secondary">Cancel</a>
-                                <form method="GET" class="d-inline">
-                                    <input type="hidden" name="delete_confirmed" value="1">
-                                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                                    <button type="submit" class="btn btn-danger">Yes, Delete User</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- Add User Form -->
-                <?php if (isset($_GET['show_add_form']) && $_GET['show_add_form'] == '1'): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Add New User</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST">
-                            <input type="hidden" name="action" value="add_user">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Full Name</label>
+        
+        <?php if ($showForm): ?>
+        <!-- Add User Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add New User</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="action" value="add">
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="name" class="form-label">Full Name *</label>
                                 <input type="text" class="form-control" id="name" name="name" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="email" class="form-label">Email Address *</label>
                                 <input type="email" class="form-control" id="email" name="email" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone">
                             </div>
-                            <div class="mb-3">
-                                <label for="role" class="form-label">Role</label>
-                                <select class="form-select" id="role" name="role" required>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="role" class="form-label">Role *</label>
+                                <select class="form-control form-select" id="role" name="role" required>
                                     <option value="customer">Customer</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Phone</label>
-                                <input type="text" class="form-control" id="phone" name="phone">
-                            </div>
-                            <div class="mb-3">
-                                <label for="professional_details" class="form-label">Professional Details</label>
-                                <textarea class="form-control" id="professional_details" name="professional_details" rows="3"></textarea>
-                            </div>
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="users.php" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Add User</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Edit User Form -->
-                <?php if ($editUser): ?>
-                <div class="page-overlay" role="dialog" aria-modal="true">
-                    <a class="page-overlay__backdrop" href="users.php" aria-label="Close"></a>
-                    <div class="page-overlay__panel page-overlay__panel--drawer">
-                        <div class="page-overlay__panel-header">
-                            <h5 class="page-overlay__panel-title">Edit User</h5>
-                            <a href="users.php" class="btn btn-secondary">Close</a>
-                        </div>
-                        <div class="page-overlay__panel-body">
-                            <form method="POST" action="users.php">
-                                <input type="hidden" name="action" value="update_user">
-                                <input type="hidden" name="id" value="<?php echo $editUser['id']; ?>">
-                                
-                                <div class="mb-3">
-                                    <label for="edit_name" class="form-label">Full Name</label>
-                                    <input type="text" class="form-control" id="edit_name" name="name" value="<?php echo htmlspecialchars($editUser['name']); ?>" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="edit_email" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="edit_email" name="email" value="<?php echo htmlspecialchars($editUser['email']); ?>" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="edit_role" class="form-label">Role</label>
-                                    <select class="form-select" id="edit_role" name="role" required>
-                                        <option value="customer" <?php echo $editUser['role'] == 'customer' ? 'selected' : ''; ?>>Customer</option>
-                                        <option value="manager" <?php echo $editUser['role'] == 'manager' ? 'selected' : ''; ?>>Manager</option>
-                                        <option value="admin" <?php echo $editUser['role'] == 'admin' ? 'selected' : ''; ?>>Admin</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="edit_phone" class="form-label">Phone</label>
-                                    <input type="text" class="form-control" id="edit_phone" name="phone" value="<?php echo htmlspecialchars($editUser['phone'] ?? ''); ?>">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="edit_professional_details" class="form-label">Professional Details</label>
-                                    <textarea class="form-control" id="edit_professional_details" name="professional_details" rows="3"><?php echo htmlspecialchars($editUser['professional_details'] ?? ''); ?></textarea>
-                                </div>
-                                <div class="page-overlay__panel-actions">
-                                    <a href="users.php" class="btn btn-secondary">Cancel</a>
-                                    <button type="submit" class="btn btn-primary">Update User</button>
-                                </div>
-                            </form>
                         </div>
                     </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Users Table -->
-                <div class="card">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Phone</th>
-                                        <th>Created At</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($users as $user): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($user['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($user['name']); ?></td>
-                                        <td><?php echo htmlspecialchars($user['email']); ?></td>
-                                        <td>
-                                            <span class="badge bg-<?php 
-                                                echo $user['role'] == 'admin' ? 'danger' : 
-                                                     ($user['role'] == 'manager' ? 'warning' : 
-                                                     ($user['role'] == 'customer' ? 'primary' : 'secondary')); ?>">
-                                                <?php echo ucfirst($user['role']); ?>
-                                            </span>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
-                                        <td><?php echo date('M j, Y', strtotime($user['created_at'])); ?></td>
-                                        <td>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots-vertical"></i>
+                    
+                    <div class="form-group">
+                        <label for="professional_details" class="form-label">Professional Details</label>
+                        <textarea class="form-control" id="professional_details" name="professional_details"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="password" class="form-label">Password *</label>
+                                <input type="password" class="form-control" id="password" name="password" minlength="6" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Create User</button>
+                        <a href="users.php" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php else: ?>
+        <!-- Filter Buttons -->
+        <div class="mb-4 d-flex gap-2 flex-wrap">
+            <a href="users.php" class="btn <?php echo !$roleFilter ? 'btn-primary' : 'btn-outline-primary'; ?>">All</a>
+            <a href="users.php?role=admin" class="btn <?php echo $roleFilter === 'admin' ? 'btn-primary' : 'btn-outline-primary'; ?>">Admins</a>
+            <a href="users.php?role=manager" class="btn <?php echo $roleFilter === 'manager' ? 'btn-primary' : 'btn-outline-primary'; ?>">Managers</a>
+            <a href="users.php?role=customer" class="btn <?php echo $roleFilter === 'customer' ? 'btn-primary' : 'btn-outline-primary'; ?>">Customers</a>
+        </div>
+        
+        <!-- Users Table -->
+        <div class="card">
+            <div class="card-body px-0">
+                <?php if (empty($users)): ?>
+                <p class="text-center text-muted py-4">No users found.</p>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                                <th class="pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($users as $user): ?>
+                            <tr>
+                                <td class="ps-4">#<?php echo $user['id']; ?></td>
+                                <td><?php echo htmlspecialchars($user['name']); ?></td>
+                                <td><?php echo htmlspecialchars($user['email']); ?></td>
+                                <td><?php echo htmlspecialchars($user['phone'] ?? '-'); ?></td>
+                                <td>
+                                    <span class="badge badge-<?php 
+                                        echo $user['role'] === 'admin' ? 'danger' : 
+                                            ($user['role'] === 'manager' ? 'warning' : 'secondary'); 
+                                    ?>">
+                                        <?php echo ucfirst($user['role']); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
+                                <td class="pe-4">
+                                    <?php if ($user['id'] != $_SESSION['user']['id']): ?>
+                                    <div class="action-dropdown">
+                                        <button class="action-dropdown-toggle" onclick="toggleActionDropdown(this)" type="button">
+                                            ⋯
+                                        </button>
+                                        <div class="action-dropdown-menu">
+                                            <div class="action-dropdown-header">Change Role</div>
+                                            
+                                            <?php foreach(['customer', 'manager', 'admin'] as $role): ?>
+                                            <form method="POST" style="margin: 0;">
+                                                <input type="hidden" name="action" value="update_role">
+                                                <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
+                                                <input type="hidden" name="role" value="<?php echo $role; ?>">
+                                                <button type="submit" class="action-dropdown-item <?php echo $user['role'] === $role ? 'active' : ''; ?>" <?php echo $user['role'] === $role ? 'disabled' : ''; ?>>
+                                                    <span class="icon"><?php echo $user['role'] === $role ? '✓' : '○'; ?></span>
+                                                    <?php echo ucfirst($role); ?>
                                                 </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <a class="dropdown-item" href="users.php?edit_user=<?php echo $user['id']; ?>">
-                                                            <i class="bi bi-pencil me-2"></i>Edit
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="users.php?confirm_delete=<?php echo $user['id']; ?>">
-                                                            <i class="bi bi-trash me-2"></i>Delete
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                            </form>
+                                            <?php endforeach; ?>
+                                            
+                                            <div class="action-dropdown-divider"></div>
+                                            
+                                            <form method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
+                                                <button type="submit" class="action-dropdown-item danger">
+                                                    <span class="icon">🗑️</span>
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <?php else: ?>
+                                    <span class="text-muted small">(You)</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </main>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+    <script>
+    function toggleMenu() {
+        document.getElementById('navbarNav').classList.toggle('active');
+    }
+    
+    function toggleUserDropdown(button) {
+        const dropdown = button.closest('.user-dropdown');
+        const menu = dropdown.querySelector('.user-dropdown-menu'); // Fix: Use querySelector on the specific dropdown
+        const allUserDropdowns = document.querySelectorAll('.user-dropdown'); // Close others
+        
+        allUserDropdowns.forEach(d => {
+            if (d !== dropdown) {
+                d.classList.remove('show');
+                const m = d.querySelector('.user-dropdown-menu');
+                if (m) m.classList.remove('show');
+            }
+        });
 
-    <script src="../js/app.js"></script>
+        // Close any open action dropdowns
+        document.querySelectorAll('.action-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+        
+        dropdown.classList.toggle('show');
+        if (menu) menu.classList.toggle('show');
+    }
+
+    function toggleActionDropdown(button) {
+        const dropdown = button.nextElementSibling;
+        const allDropdowns = document.querySelectorAll('.action-dropdown-menu');
+        
+        // Close all other dropdowns
+        allDropdowns.forEach(menu => {
+            if (menu !== dropdown) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Close user dropdowns
+        document.querySelectorAll('.user-dropdown, .user-dropdown-menu').forEach(el => el.classList.remove('show'));
+
+        // Toggle current dropdown
+        dropdown.classList.toggle('show');
+    }
+    
+    document.addEventListener('click', function(event) {
+        // Close user dropdown if clicked outside
+        if (!event.target.closest('.user-dropdown')) {
+            document.querySelectorAll('.user-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('show');
+                const menu = dropdown.querySelector('.user-dropdown-menu');
+                if (menu) menu.classList.remove('show');
+            });
+        }
+
+        // Close action dropdown if clicked outside
+        if (!event.target.closest('.action-dropdown')) {
+            document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+    </script>
 </body>
 </html>
-
 <?php
 $userManager->close();
 ?>

@@ -1,594 +1,383 @@
 <?php
 /**
- * Restaurant Management Page
- * Admin interface for managing restaurants
+ * Admin Restaurant Management
+ * CRUD operations for restaurants
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Check if user is logged in and is admin
-require_once '../backend/Permission.php';
-
-if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || 
-    !isset($_SESSION['user'])) {
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in'] || $_SESSION['user']['role'] !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
 
-// Require admin access
-Permission::requireAdmin($_SESSION['user']['role']);
-
 require_once '../backend/config.php';
 require_once '../backend/Restaurant.php';
-require_once '../backend/Menu.php';
 require_once '../backend/User.php';
+require_once '../backend/Alert.php';
 
 $restaurantManager = new Restaurant();
-$menuManager = new Menu();
 $userManager = new User();
 
-$allowAdminOperationalActions = false;
-
-$allUsers = $userManager->getAllUsers();
-$managers = array_values(array_filter($allUsers, function($user) {
-    return isset($user['role']) && $user['role'] === 'manager';
-}));
-
-// Handle delete confirmation
-if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
-    $itemId = $_GET['confirm_delete'];
-    $itemType = $_GET['type'];
-    
-    // We'll handle the actual deletion through a GET request
-}
+// Get managers for dropdown
+$managers = $userManager->getUsersByRole('manager');
 
 // Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add_restaurant':
-                $result = $restaurantManager->createRestaurant(
-                    $_POST['name'],
-                    $_POST['description'],
-                    $_POST['cuisine'],
-                    $_POST['address'],
-                    $_POST['phone'],
-                    $_POST['price_range'],
-                    $_POST['image'] ?? null,
-                    $_POST['seating_capacity'] ?? 0
-                );
-                $message = $result['message'];
-                break;
-                
-            case 'update_restaurant':
-                $result = $restaurantManager->updateRestaurant(
-                    $_POST['id'],
-                    $_POST['name'],
-                    $_POST['description'],
-                    $_POST['cuisine'],
-                    $_POST['address'],
-                    $_POST['phone'],
-                    $_POST['price_range'],
-                    $_POST['image'] ?? null,
-                    $_POST['seating_capacity'] ?? 0
-                );
-                if (isset($_POST['manager_ids']) && is_array($_POST['manager_ids'])) {
-                    $assignResult = $restaurantManager->setManagersForRestaurant((int)$_POST['id'], $_POST['manager_ids']);
-                    if (!$assignResult['success']) {
-                        $messageType = 'danger';
-                        $message = $assignResult['message'];
-                        break;
-                    }
-                }
-                $message = $result['message'];
-                break;
-                
-            case 'delete_restaurant':
-                $result = $restaurantManager->deleteRestaurant($_POST['id']);
-                $message = $result['message'];
-                break;
-                
-            case 'add_menu_item':
-                if (!$allowAdminOperationalActions) {
-                    $messageType = 'danger';
-                    $message = 'Admins cannot manage menu items. Assign a manager to handle restaurant operations.';
-                    break;
-                }
-                $result = $menuManager->createMenuItem(
-                    $_POST['restaurant_id'],
-                    $_POST['name'],
-                    $_POST['description'],
-                    $_POST['price'],
-                    $_POST['category'],
-                    $_POST['image'] ?? null,
-                    $_POST['available'] ?? 1
-                );
-                $message = $result['message'];
-                break;
-                
-            case 'update_menu_item':
-                if (!$allowAdminOperationalActions) {
-                    $messageType = 'danger';
-                    $message = 'Admins cannot manage menu items. Assign a manager to handle restaurant operations.';
-                    break;
-                }
-                $result = $menuManager->updateMenuItem(
-                    $_POST['id'],
-                    $_POST['name'],
-                    $_POST['description'],
-                    $_POST['price'],
-                    $_POST['category'],
-                    $_POST['image'] ?? null,
-                    $_POST['available'] ?? 1
-                );
-                $message = $result['message'];
-                break;
-                
-            case 'delete_menu_item':
-                if (!$allowAdminOperationalActions) {
-                    $messageType = 'danger';
-                    $message = 'Admins cannot manage menu items. Assign a manager to handle restaurant operations.';
-                    break;
-                }
-                $result = $menuManager->deleteMenuItem($_POST['id']);
-                $message = $result['message'];
-                break;
-                
-            case 'edit_restaurant':
-                // Show edit form for restaurant
-                $restaurant = $restaurantManager->getRestaurantById($_POST['id']);
-                if ($restaurant) {
-                    // We'll set a flag to show the edit form
-                    $showEditForm = true;
-                    $editRestaurant = $restaurant;
-                    $editRestaurantManagerIds = $restaurantManager->getManagerIdsForRestaurant((int)$restaurant['id']);
-                } else {
-                    $message = 'Restaurant not found.';
-                }
-                break;
-                
-            case 'edit_menu_item':
-                // Show edit form for menu item
-                $menuItem = $menuManager->getMenuItemById($_POST['id']);
-                if ($menuItem) {
-                    // We'll set a flag to show the edit form
-                    $showEditMenuItemForm = true;
-                    $editMenuItem = $menuItem;
-                } else {
-                    $message = 'Menu item not found.';
-                }
-                break;
-        }
-    }
-} else if (isset($_GET['confirm_delete']) && isset($_GET['type'])) {
-    // Handle delete confirmation through GET parameters
-    $itemId = $_GET['confirm_delete'];
-    $itemType = $_GET['type'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
     
-    // Show confirmation message
-    if ($itemType == 'restaurant') {
-        $restaurant = $restaurantManager->getRestaurantById($itemId);
-        if ($restaurant) {
-            $message = 'Are you sure you want to delete restaurant "' . htmlspecialchars($restaurant['name']) . '"? All menu items and reservations will also be deleted.';
-            $messageType = 'warning';
-            $showDeleteConfirmation = true;
-            $deleteItemType = 'restaurant';
+    if ($action === 'add') {
+        $result = $restaurantManager->createRestaurant(
+            $_POST['name'],
+            $_POST['description'],
+            $_POST['cuisine'],
+            $_POST['address'],
+            $_POST['phone'],
+            $_POST['price_range'],
+            $_POST['seating_capacity'],
+            $_POST['manager_id'],
+            $_POST['image'] ?? null
+        );
+        
+        if ($result['success']) {
+            Alert::setSuccess('Restaurant created successfully!');
+        } else {
+            Alert::setError($result['message']);
         }
-    } else if ($itemType == 'menu_item') {
-        $menuItem = $menuManager->getMenuItemById($itemId);
-        if ($menuItem) {
-            $message = 'Are you sure you want to delete menu item "' . htmlspecialchars($menuItem['name']) . '"?';
-            $messageType = 'warning';
-            $showDeleteConfirmation = true;
-            $deleteItemType = 'menu_item';
+    } elseif ($action === 'edit') {
+        $result = $restaurantManager->updateRestaurant(
+            $_POST['id'],
+            $_POST['name'],
+            $_POST['description'],
+            $_POST['cuisine'],
+            $_POST['address'],
+            $_POST['phone'],
+            $_POST['price_range'],
+            $_POST['seating_capacity'],
+            $_POST['image'] ?? null,
+            $_POST['manager_id'] ?? null
+        );
+        
+        if ($result['success']) {
+            Alert::setSuccess('Restaurant updated successfully!');
+        } else {
+            Alert::setError($result['message']);
+        }
+    } elseif ($action === 'delete') {
+        $result = $restaurantManager->deleteRestaurant($_POST['id']);
+        if ($result['success']) {
+            Alert::setSuccess('Restaurant deleted successfully!');
+        } else {
+            Alert::setError($result['message']);
         }
     }
-} else if (isset($_GET['delete_confirmed']) && isset($_GET['id']) && isset($_GET['type'])) {
-    // Handle confirmed delete
-    if ($_GET['type'] == 'restaurant') {
-        $result = $restaurantManager->deleteRestaurant($_GET['id']);
-        $message = $result['message'];
-    } else if ($_GET['type'] == 'menu_item') {
-        $result = $menuManager->deleteMenuItem($_GET['id']);
-        $message = $result['message'];
-    }
-    $messageType = 'info';
+    
+    header('Location: restaurants.php');
+    exit();
 }
 
-// Get all restaurants
+// Check if editing
+$editRestaurant = null;
+if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) {
+    $editRestaurant = $restaurantManager->getRestaurantById($_GET['id']);
+}
+
+$showForm = isset($_GET['action']) && ($_GET['action'] === 'add' || $_GET['action'] === 'edit');
 $restaurants = $restaurantManager->getAllRestaurants();
-
-// Get menu items for the first restaurant (or selected restaurant)
-$selectedRestaurantId = isset($_GET['restaurant_id']) ? (int)$_GET['restaurant_id'] : 
-                       (!empty($restaurants) ? $restaurants[0]['id'] : null);
-$menuItems = $selectedRestaurantId ? $menuManager->getMenuItemsByRestaurant($selectedRestaurantId) : [];
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Management - Restaurant Management System</title>
+    <title>Manage Restaurants - Admin</title>
     <link href="../css/style.css" rel="stylesheet">
-    <link href="../css/enhanced-styles.css" rel="stylesheet">
-    <link href="../css/admin-dashboard-polish.css" rel="stylesheet">
-    <link href="../css/admin-layout.css" rel="stylesheet">
-    <link href="../css/admin-icons.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="../admin/index.php">
-                <span class="custom-icon icon-restaurant"></span> Restaurant Manager
+            <a class="navbar-brand" href="index.php" style="display: flex; align-items: center; gap: 8px;">
+                <img src="../assets/logo.jpg" alt="Logo" style="height: 32px; width: 32px; border-radius: 6px; object-fit: cover;">
+                Gebeta (ገበታ) Admin
             </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Welcome, <?php echo htmlspecialchars($_SESSION['user']['name']); ?> 
-                    <span class="badge bg-secondary"><?php echo ucfirst($_SESSION['user']['role']); ?></span>
-                </span>
-                <a class="btn btn-outline-light" href="../logout.php">Logout</a>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a class="nav-link" href="index.php">Dashboard</a></li>
+                <li><a class="nav-link" href="analytics.php">Analytics</a></li>
+                <li><a class="nav-link active" href="restaurants.php">Restaurants</a></li>
+                <li><a class="nav-link" href="reservations.php">Reservations</a></li>
+                <li><a class="nav-link" href="users.php">Users</a></li>
+            </ul>
+            
+            <div style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+                <div class="user-dropdown">
+                    <button class="user-dropdown-toggle" onclick="toggleUserDropdown(this)" type="button">
+                        <div class="user-avatar">
+                            <?php if (!empty($_SESSION['user']['profile_image'])): ?>
+                                <img src="../<?php echo htmlspecialchars($_SESSION['user']['profile_image']); ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <?php else: ?>
+                                <?php echo strtoupper(substr($_SESSION['user']['name'], 0, 1)); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                        </div>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="user-dropdown-menu">
+                        <div class="user-dropdown-header">
+                            <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
+                            <div class="user-email"><?php echo htmlspecialchars($_SESSION['user']['email']); ?></div>
+                        </div>
+                        <div class="user-dropdown-divider"></div>
+                        <a href="profile.php" class="user-dropdown-item">
+                            <span class="icon">👤</span>
+                            Profile
+                        </a>
+                        <a href="../logout.php" class="user-dropdown-item logout">
+                            <span class="icon">🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
+                <div class="menu-toggle" onclick="toggleMenu()">☰</div>
             </div>
         </div>
     </nav>
 
-    <!-- Sidebar -->
-    <nav class="sidebar">
-        <div class="position-sticky pt-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">
-                        <span class="custom-icon icon-speedometer2"></span> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="users.php">
-                        <span class="custom-icon icon-people"></span> User Management
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="restaurants.php">
-                        <span class="custom-icon icon-shop"></span> Restaurants
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reservations.php">
-                        <span class="custom-icon icon-calendar-check"></span> Reservations
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="services.php">
-                        <span class="custom-icon icon-gear"></span> External Services
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reports.php">
-                        <span class="custom-icon icon-graph-up"></span> Reports
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="api_keys.php">
-                        <span class="custom-icon icon-key"></span> API Keys
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="service_registry.php">
-                        <span class="custom-icon icon-diagram-3"></span> Service Registry
-                    </a>
-                </li>
-            </ul>
+    <div class="container py-5">
+        <?php Alert::display(); ?>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Manage Restaurants</h1>
+            <?php if (!$showForm): ?>
+            <a href="restaurants.php?action=add" class="btn btn-primary">+ Add Restaurant</a>
+            <?php else: ?>
+            <a href="restaurants.php" class="btn btn-secondary">Back to List</a>
+            <?php endif; ?>
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Restaurant Management</h1>
-                    <form method="GET">
-                        <input type="hidden" name="show_add_form" value="1">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-lg"></i> Add New Restaurant
-                        </button>
-                    </form>
-                </div>
-
-                <?php if (isset($message)): ?>
-                <div class="alert alert-<?php echo isset($messageType) ? $messageType : 'info'; ?> alert-dismissible fade show" role="alert">
-                    <?php echo htmlspecialchars($message); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (!$allowAdminOperationalActions): ?>
-                <div class="alert alert-info" role="alert">
-                    Admin access is limited to system-level tasks. Restaurant operations (menu management) are handled by Managers.
-                </div>
-                <?php endif; ?>
-                
-                <?php if (isset($showDeleteConfirmation) && $showDeleteConfirmation): ?>
-                <div class="page-overlay" role="dialog" aria-modal="true">
-                    <a class="page-overlay__backdrop" href="restaurants.php" aria-label="Close"></a>
-                    <div class="page-overlay__panel">
-                        <div class="page-overlay__panel-header">
-                            <h4 class="page-overlay__panel-title">Confirm Deletion</h4>
-                            <a href="restaurants.php" class="btn btn-secondary">Close</a>
+        
+        <?php if ($showForm): ?>
+        <!-- Add/Edit Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><?php echo $editRestaurant ? 'Edit Restaurant' : 'Add New Restaurant'; ?></h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="action" value="<?php echo $editRestaurant ? 'edit' : 'add'; ?>">
+                    <?php if ($editRestaurant): ?>
+                    <input type="hidden" name="id" value="<?php echo $editRestaurant['id']; ?>">
+                    <?php endif; ?>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="name" class="form-label">Restaurant Name *</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="<?php echo htmlspecialchars($editRestaurant['name'] ?? ''); ?>" required>
+                            </div>
                         </div>
-                        <div class="page-overlay__panel-body">
-                            <p><?php echo htmlspecialchars($message); ?></p>
-                            <div class="page-overlay__panel-actions">
-                                <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
-                                <form method="GET" class="d-inline">
-                                    <input type="hidden" name="delete_confirmed" value="1">
-                                    <input type="hidden" name="id" value="<?php echo $_GET['confirm_delete']; ?>">
-                                    <input type="hidden" name="type" value="<?php echo $deleteItemType; ?>">
-                                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
-                                </form>
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="cuisine" class="form-label">Cuisine Type *</label>
+                                <input type="text" class="form-control" id="cuisine" name="cuisine" 
+                                       value="<?php echo htmlspecialchars($editRestaurant['cuisine'] ?? ''); ?>" required>
                             </div>
                         </div>
                     </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- Add Restaurant Form -->
-                <?php if (isset($_GET['show_add_form']) && $_GET['show_add_form'] == '1'): ?>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Add New Restaurant</h5>
+                    
+                    <div class="form-group">
+                        <label for="description" class="form-label">Description *</label>
+                        <textarea class="form-control" id="description" name="description" required><?php echo htmlspecialchars($editRestaurant['description'] ?? ''); ?></textarea>
                     </div>
-                    <div class="card-body">
-                        <form method="POST">
-                            <input type="hidden" name="action" value="add_restaurant">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Restaurant Name</label>
-                                <input type="text" class="form-control" id="name" name="name" required>
+                    
+                    <div class="form-group">
+                        <label for="address" class="form-label">Address *</label>
+                        <input type="text" class="form-control" id="address" name="address" 
+                               value="<?php echo htmlspecialchars($editRestaurant['address'] ?? ''); ?>" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 col-12">
+                            <div class="form-group">
+                                <label for="phone" class="form-label">Phone *</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       value="<?php echo htmlspecialchars($editRestaurant['phone'] ?? ''); ?>" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Description</label>
-                                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="cuisine" class="form-label">Cuisine</label>
-                                <input type="text" class="form-control" id="cuisine" name="cuisine" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="address" class="form-label">Address</label>
-                                <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Phone</label>
-                                <input type="text" class="form-control" id="phone" name="phone" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="price_range" class="form-label">Price Range</label>
-                                <select class="form-select" id="price_range" name="price_range" required>
-                                    <option value="$">$</option>
-                                    <option value="$$">$$</option>
-                                    <option value="$$$">$$$</option>
-                                    <option value="$$$$">$$$$</option>
+                        </div>
+                        <div class="col-md-4 col-12">
+                            <div class="form-group">
+                                <label for="price_range" class="form-label">Price Range *</label>
+                                <select class="form-control form-select" id="price_range" name="price_range" required>
+                                    <option value="$" <?php echo ($editRestaurant['price_range'] ?? '') === '$' ? 'selected' : ''; ?>>$ - Budget</option>
+                                    <option value="$$" <?php echo ($editRestaurant['price_range'] ?? '') === '$$' ? 'selected' : ''; ?>>$$ - Moderate</option>
+                                    <option value="$$$" <?php echo ($editRestaurant['price_range'] ?? '') === '$$$' ? 'selected' : ''; ?>>$$$ - Upscale</option>
+                                    <option value="$$$$" <?php echo ($editRestaurant['price_range'] ?? '') === '$$$$' ? 'selected' : ''; ?>>$$$$ - Premium</option>
                                 </select>
                             </div>
-                            <div class="mb-3">
-                                <label for="seating_capacity" class="form-label">Seating Capacity</label>
-                                <input type="number" class="form-control" id="seating_capacity" name="seating_capacity" min="0">
-                            </div>
-                            <div class="mb-3">
-                                <label for="image" class="form-label">Image URL</label>
-                                <input type="text" class="form-control" id="image" name="image">
-                            </div>
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Add Restaurant</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <?php if (isset($showEditForm) && $showEditForm): ?>
-                <div class="page-overlay" role="dialog" aria-modal="true">
-                    <a class="page-overlay__backdrop" href="restaurants.php" aria-label="Close"></a>
-                    <div class="page-overlay__panel page-overlay__panel--drawer">
-                        <div class="page-overlay__panel-header">
-                            <h5 class="page-overlay__panel-title">Edit Restaurant</h5>
-                            <a href="restaurants.php" class="btn btn-secondary">Close</a>
                         </div>
-                        <div class="page-overlay__panel-body">
-                        <form method="POST">
-                            <input type="hidden" name="action" value="update_restaurant">
-                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($editRestaurant['id']); ?>">
-                            <div class="mb-3">
-                                <label for="edit_name" class="form-label">Restaurant Name</label>
-                                <input type="text" class="form-control" id="edit_name" name="name" value="<?php echo htmlspecialchars($editRestaurant['name']); ?>" required>
+                        <div class="col-md-4 col-12">
+                            <div class="form-group">
+                                <label for="seating_capacity" class="form-label">Seating Capacity *</label>
+                                <input type="number" class="form-control" id="seating_capacity" name="seating_capacity" 
+                                       value="<?php echo htmlspecialchars($editRestaurant['seating_capacity'] ?? '50'); ?>" min="1" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="edit_description" class="form-label">Description</label>
-                                <textarea class="form-control" id="edit_description" name="description" rows="3" required><?php echo htmlspecialchars($editRestaurant['description']); ?></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_cuisine" class="form-label">Cuisine</label>
-                                <input type="text" class="form-control" id="edit_cuisine" name="cuisine" value="<?php echo htmlspecialchars($editRestaurant['cuisine']); ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_address" class="form-label">Address</label>
-                                <textarea class="form-control" id="edit_address" name="address" rows="2" required><?php echo htmlspecialchars($editRestaurant['address']); ?></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_phone" class="form-label">Phone</label>
-                                <input type="text" class="form-control" id="edit_phone" name="phone" value="<?php echo htmlspecialchars($editRestaurant['phone']); ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_price_range" class="form-label">Price Range</label>
-                                <select class="form-select" id="edit_price_range" name="price_range" required>
-                                    <option value="$" <?php echo $editRestaurant['price_range'] == '$' ? 'selected' : ''; ?>>$</option>
-                                    <option value="$$" <?php echo $editRestaurant['price_range'] == '$$' ? 'selected' : ''; ?>>$$</option>
-                                    <option value="$$$" <?php echo $editRestaurant['price_range'] == '$$$' ? 'selected' : ''; ?>>$$$</option>
-                                    <option value="$$$$" <?php echo $editRestaurant['price_range'] == '$$$$' ? 'selected' : ''; ?>>$$$$</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_seating_capacity" class="form-label">Seating Capacity</label>
-                                <input type="number" class="form-control" id="edit_seating_capacity" name="seating_capacity" min="0" value="<?php echo htmlspecialchars($editRestaurant['seating_capacity']); ?>">
-                            </div>
-                            <div class="mb-3">
-                                <label for="edit_image" class="form-label">Image URL</label>
-                                <input type="text" class="form-control" id="edit_image" name="image" value="<?php echo htmlspecialchars($editRestaurant['image'] ?? ''); ?>">
-                            </div>
-                            <div class="mb-3">
-                                <label for="manager_ids" class="form-label">Assigned Managers</label>
-                                <select class="form-select" id="manager_ids" name="manager_ids[]" multiple>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="manager_id" class="form-label">Assign Manager *</label>
+                                <select class="form-control form-select" id="manager_id" name="manager_id" required>
+                                    <option value="">Select Manager</option>
                                     <?php foreach ($managers as $manager): ?>
-                                    <option value="<?php echo (int)$manager['id']; ?>" <?php echo (isset($editRestaurantManagerIds) && in_array((int)$manager['id'], $editRestaurantManagerIds, true)) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($manager['name'] . ' (' . $manager['email'] . ')'); ?>
+                                    <option value="<?php echo $manager['id']; ?>" 
+                                        <?php echo ($editRestaurant['manager_id'] ?? '') == $manager['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($manager['name']); ?> (<?php echo htmlspecialchars($manager['email']); ?>)
                                     </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="page-overlay__panel-actions">
-                                <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Update Restaurant</button>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <div class="form-group">
+                                <label for="image" class="form-label">Image URL</label>
+                                <input type="url" class="form-control" id="image" name="image" 
+                                       value="<?php echo htmlspecialchars($editRestaurant['image'] ?? ''); ?>">
                             </div>
-                        </form>
                         </div>
                     </div>
-                </div>
-                <?php endif; ?>
-
-
-                <!-- Restaurants List -->
-                <div class="row">
-                    <?php foreach ($restaurants as $restaurant): ?>
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title"><?php echo htmlspecialchars($restaurant['name']); ?></h5>
-                                <p class="card-text"><?php echo htmlspecialchars($restaurant['description']); ?></p>
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($restaurant['cuisine']); ?><br>
-                                        <i class="bi bi-currency-dollar"></i> <?php echo htmlspecialchars($restaurant['price_range']); ?><br>
-                                        <i class="bi bi-star-fill"></i> <?php echo htmlspecialchars($restaurant['rating']); ?>/5.0
-                                    </small>
-                                </p>
-                            </div>
-                            <div class="card-footer">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <a href="?restaurant_id=<?php echo $restaurant['id']; ?>" class="btn btn-outline-primary btn-sm">
-                                        <i class="bi bi-list"></i> Menu
-                                    </a>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="bi bi-three-dots-vertical"></i>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><?php echo $editRestaurant ? 'Update Restaurant' : 'Create Restaurant'; ?></button>
+                        <a href="restaurants.php" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php else: ?>
+        <!-- Restaurant List -->
+        <div class="card">
+            <div class="card-body px-0">
+                <?php if (empty($restaurants)): ?>
+                <p class="text-center text-muted py-4">No restaurants found. Add your first restaurant!</p>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Cuisine</th>
+                                <th>Manager</th>
+                                <th>Price</th>
+                                <th>Rating</th>
+                                <th>Capacity</th>
+                                <th class="pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($restaurants as $restaurant): ?>
+                            <tr>
+                                <td class="ps-4"><?php echo htmlspecialchars($restaurant['name']); ?></td>
+                                <td><span class="badge badge-info"><?php echo htmlspecialchars($restaurant['cuisine']); ?></span></td>
+                                <td><?php echo htmlspecialchars($restaurant['manager_name'] ?? 'Unassigned'); ?></td>
+                                <td><?php echo htmlspecialchars($restaurant['price_range']); ?></td>
+                                <td><?php echo $restaurant['rating']; ?> / 5</td>
+                                <td><?php echo $restaurant['seating_capacity']; ?></td>
+                                <td class="pe-4">
+                                    <div class="action-dropdown">
+                                        <button class="action-dropdown-toggle" onclick="toggleDropdown(this)" type="button">
+                                            ⋯
                                         </button>
-                                        <ul class="dropdown-menu">
-                                            <li>
-                                                <form method="POST" class="d-inline">
-                                                    <input type="hidden" name="action" value="edit_restaurant">
-                                                    <input type="hidden" name="id" value="<?php echo $restaurant['id']; ?>">
-                                                    <button type="submit" class="dropdown-item">
-                                                        <i class="bi bi-pencil me-2"></i>Edit
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            <li>
-                                                <form method="GET" class="d-inline">
-                                                    <input type="hidden" name="confirm_delete" value="<?php echo $restaurant['id']; ?>">
-                                                    <input type="hidden" name="type" value="restaurant">
-                                                    <button type="submit" class="dropdown-item text-danger">
-                                                        <i class="bi bi-trash me-2"></i>Delete
-                                                    </button>
-                                                </form>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <?php if ($selectedRestaurantId && $allowAdminOperationalActions): ?>
-                <div class="card mt-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Menu Items</h5>
-                        <form method="GET">
-                            <input type="hidden" name="show_add_menu_form" value="1">
-                            <input type="hidden" name="restaurant_id" value="<?php echo $selectedRestaurantId; ?>">
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="bi bi-plus-lg"></i> Add Menu Item
-                            </button>
-                        </form>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Description</th>
-                                        <th>Price</th>
-                                        <th>Category</th>
-                                        <th>Available</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($menuItems as $item): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($item['name']); ?></td>
-                                        <td><?php echo htmlspecialchars($item['description']); ?></td>
-                                        <td>$<?php echo number_format($item['price'], 2); ?></td>
-                                        <td><?php echo ucfirst($item['category']); ?></td>
-                                        <td>
-                                            <?php if ($item['available']): ?>
-                                                <span class="badge bg-success">Available</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">Unavailable</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots-vertical"></i>
+                                        <div class="action-dropdown-menu">
+                                            <a href="restaurants.php?action=edit&id=<?php echo $restaurant['id']; ?>" class="action-dropdown-item">
+                                                <span class="icon">✏️</span>
+                                                Edit
+                                            </a>
+                                            <div class="action-dropdown-divider"></div>
+                                            <form method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this restaurant?');">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="<?php echo $restaurant['id']; ?>">
+                                                <button type="submit" class="action-dropdown-item danger">
+                                                    <span class="icon">🗑️</span>
+                                                    Delete
                                                 </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <form method="POST" class="d-inline">
-                                                            <input type="hidden" name="action" value="edit_menu_item">
-                                                            <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                                            <button type="submit" class="dropdown-item">
-                                                                <i class="bi bi-pencil me-2"></i>Edit
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                    <li>
-                                                        <form method="GET" class="d-inline">
-                                                            <input type="hidden" name="confirm_delete" value="<?php echo $item['id']; ?>">
-                                                            <input type="hidden" name="type" value="menu_item">
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                <i class="bi bi-trash me-2"></i>Delete
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
                 <?php endif; ?>
-            </main>
-
-    <script src="../js/app.js"></script>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+    
+    <script>
+    function toggleMenu() {
+        document.getElementById('navbarNav').classList.toggle('active');
+    }
+    // Dropdown toggle functionality
+    function toggleDropdown(button) {
+        const dropdown = button.nextElementSibling;
+        const allDropdowns = document.querySelectorAll('.action-dropdown-menu');
+        
+        // Close all other dropdowns
+        allDropdowns.forEach(menu => {
+            if (menu !== dropdown) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Toggle current dropdown
+        dropdown.classList.toggle('show');
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.action-dropdown')) {
+            document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+    </script>
+    <script>
+    function toggleUserDropdown(button) {
+        const dropdown = button.closest('.user-dropdown');
+        const menu = dropdown.querySelector('.user-dropdown-menu');
+        const allUserDropdowns = document.querySelectorAll('.user-dropdown');
+        
+        allUserDropdowns.forEach(d => {
+            if (d !== dropdown) {
+                d.classList.remove('show');
+                d.querySelector('.user-dropdown-menu').classList.remove('show');
+            }
+        });
+        
+        dropdown.classList.toggle('show');
+        menu.classList.toggle('show');
+    }
+    
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.user-dropdown')) {
+            document.querySelectorAll('.user-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('show');
+                dropdown.querySelector('.user-dropdown-menu').classList.remove('show');
+            });
+        }
+    });
+    </script>
 </body>
 </html>
-
 <?php
 $restaurantManager->close();
-$menuManager->close();
+$userManager->close();
 ?>
