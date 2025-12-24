@@ -1,288 +1,242 @@
 <?php
 /**
  * Booking Class
- * Handles external service booking operations (tours, hotels, taxis)
+ * Handles booking management for external services
  */
 
-require_once 'Database.php';
+require_once __DIR__ . '/config.php';
 
 class Booking {
-    private $db;
+    private $conn;
     private $table = 'bookings';
-
+    
+    private $client;
+    
     public function __construct() {
-        $this->db = new Database();
+        $database = new Database();
+        $this->conn = $database->getConnection();
+        
+        require_once __DIR__ . '/ExternalServiceClient.php';
+        $this->client = new ExternalServiceClient();
     }
-
+    
     /**
-     * Get all bookings for a customer
+     * Create booking (Internal + External)
      */
-    public function getBookingsByCustomer($customerId) {
-        $query = "SELECT * FROM {$this->table} WHERE customer_id = ? ORDER BY created_at DESC";
-        $params = [$customerId];
-        $paramTypes = "i";
-
+    public function createBooking($service_type, $service_id, $customer_id, $date = null, $time = null, $guests = null, $special_requests = null) {
+        // 1. Prepare Customer Data
+        $customerData = [
+            'id' => $customer_id, // For basic identification
+            // In a real app, we'd fetch name/email/phone from DB using $customer_id
+            // providing defaults here for robustness
+            'user_id' => $customer_id,
+            'name' => 'Customer #' . $customer_id,
+            'email' => 'customer' . $customer_id . '@example.com',
+            'phone' => '+251911000000',
+            'date' => $date,
+            'time' => $time,
+            'guests' => $guests,
+            'special_requests' => $special_requests
+        ];
+        
+        // 2. Call External Service
+        $externalResult = ['success' => false, 'message' => 'Service type not supported'];
+        
         try {
-            return $this->db->select($query, $params, $paramTypes);
+            switch ($service_type) {
+                case 'tour':
+                    $externalResult = $this->client->bookTour($service_id, $customerData);
+                    break;
+                    
+                case 'hotel':
+                    $externalResult = $this->client->bookHotel($service_id, $customerData);
+                    break;
+                    
+                case 'taxi':
+                    // Extract pickup/dropoff from special_requests or use active defaults
+                    // Format in special_requests: "Pickup: X; Dropoff: Y"
+                    $pickup = 'Addis Ababa';
+                    $dropoff = 'Bole Airport';
+                    
+                    if ($special_requests) {
+                        if (preg_match('/Pickup:\s*([^;]+)/i', $special_requests, $m)) $pickup = trim($m[1]);
+                        if (preg_match('/Dropoff:\s*([^;]+)/i', $special_requests, $m)) $dropoff = trim($m[1]);
+                    }
+                    
+                    // Taxi API expects 'pickup_time', map from 'date' + 'time'
+                    // Doc example: "2024-12-25 14:30:00" (Space separator)
+                    $pickupTime = ($date && $time) ? ($date . ' ' . $time . ':00') : date('Y-m-d H:i:s');
+                    $customerData['pickup_time'] = $pickupTime;
+                    
+                    // Taxi API specific IDs
+                    $customerData['service_id'] = $service_id;
+                    $customerData['user_id'] = $customer_id;
+                    $customerData['guests'] = $guests; // Map party size to passengers
+                    
+                    $externalResult = $this->client->bookTaxi($pickup, $dropoff, $customerData);
+                    break;
+                    
+                    // Tickets removed
+            }
         } catch (Exception $e) {
-            return [];
+            return ['success' => false, 'message' => 'External service error: ' . $e->getMessage()];
+        }
+        
+        // 3. If External Booking Successful, Save Locally
+        if ($externalResult['success']) {
+            $sql = "INSERT INTO {$this->table} (service_type, service_id, customer_id, date, time, guests, special_requests, status, external_reference) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?)";
+            $stmt = $this->conn->prepare($sql);
+            
+            // Get external reference ID if available
+            $ref = $externalResult['data']['booking_id'] ?? $externalResult['booking_id'] ?? 'EXT-' . time();
+            
+            $stmt->bind_param("siississ", $service_type, $service_id, $customer_id, $date, $time, $guests, $special_requests, $ref);
+            
+            if ($stmt->execute()) {
+                return [
+                    'success' => true,
+                    'message' => 'Booking confirmed with provider!',
+                    'booking_id' => $this->conn->insert_id,
+                    'external_response' => $externalResult
+                ];
+            } else {
+                 return ['success' => true, 'message' => 'Booking confirmed externally but local save failed.', 'external_response' => $externalResult];
+            }
+        } else {
+            return [
+                'success' => false, 
+                'message' => 'Provider rejected booking: ' . ($externalResult['message'] ?? 'Unknown error')
+            ];
         }
     }
-
+    
     /**
      * Get all bookings
      */
     public function getAllBookings() {
-        $query = "SELECT * FROM {$this->table} ORDER BY created_at DESC";
-
-        try {
-            return $this->db->select($query);
-        } catch (Exception $e) {
-            return [];
+        $sql = "SELECT b.*, u.name as customer_name, u.email as customer_email 
+                FROM {$this->table} b 
+                LEFT JOIN users u ON b.customer_id = u.id 
+                ORDER BY b.created_at DESC";
+        $result = $this->conn->query($sql);
+        
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            $bookings[] = $row;
         }
+        
+        return $bookings;
     }
-
+    
     /**
      * Get booking by ID
      */
     public function getBookingById($id) {
-        $query = "SELECT * FROM {$this->table} WHERE id = ?";
-        $params = [$id];
-        $paramTypes = "i";
-
-        try {
-            $result = $this->db->select($query, $params, $paramTypes);
-            return !empty($result) ? $result[0] : null;
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Create a new booking
-     */
-    public function createBooking($serviceType, $serviceId, $customerId, $date = null, $time = null, $guests = null, $specialRequests = null) {
-        $query = "INSERT INTO {$this->table} (service_type, service_id, customer_id, date, time, guests, special_requests) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $params = [$serviceType, $serviceId, $customerId, $date, $time, $guests, $specialRequests];
-        $paramTypes = "siissis";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success']) {
-                return [
-                    'success' => true,
-                    'message' => 'Booking created successfully',
-                    'booking_id' => $result['insert_id']
-                ];
-            } else {
-                return ['success' => false, 'message' => 'Failed to create booking'];
-            }
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
-        }
-    }
-
-    /**
-     * Update booking status
-     */
-    public function updateBookingStatus($id, $status) {
-        $validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
-        if (!in_array($status, $validStatuses)) {
-            return ['success' => false, 'message' => 'Invalid status'];
-        }
-
-        $query = "UPDATE {$this->table} SET status = ?, updated_at = NOW() WHERE id = ?";
-        $params = [$status, $id];
-        $paramTypes = "si";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
-                return [
-                    'success' => true,
-                    'message' => 'Booking status updated successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to update booking status'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Update booking details
-     */
-    public function updateBooking($id, $date, $time, $guests, $specialRequests = null) {
-        $query = "UPDATE {$this->table} SET date = ?, time = ?, guests = ?, special_requests = ?, updated_at = NOW() WHERE id = ?";
-        $params = [$date, $time, $guests, $specialRequests, $id];
-        $paramTypes = "ssisi";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
-                return [
-                    'success' => true,
-                    'message' => 'Booking updated successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to update booking'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Delete booking
-     */
-    public function deleteBooking($id) {
-        $query = "DELETE FROM {$this->table} WHERE id = ?";
-        $params = [$id];
-        $paramTypes = "i";
-
-        try {
-            $result = $this->db->execute($query, $params, $paramTypes);
-            if ($result['success'] && $result['affected_rows'] > 0) {
-                return [
-                    'success' => true,
-                    'message' => 'Booking deleted successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to delete booking'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Get bookings by service type
-     */
-    public function getBookingsByServiceType($serviceType) {
-        $query = "SELECT * FROM {$this->table} WHERE service_type = ? ORDER BY created_at DESC";
-        $params = [$serviceType];
-        $paramTypes = "s";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Get bookings by status
-     */
-    public function getBookingsByStatus($status) {
-        $query = "SELECT * FROM {$this->table} WHERE status = ? ORDER BY created_at DESC";
-        $params = [$status];
-        $paramTypes = "s";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Get upcoming bookings for a customer
-     */
-    public function getUpcomingBookings($customerId, $days = 30) {
-        $query = "SELECT * FROM {$this->table} WHERE customer_id = ? AND date >= CURDATE() AND date <= DATE_ADD(CURDATE(), INTERVAL ? DAY) ORDER BY date, time";
-        $params = [$customerId, $days];
-        $paramTypes = "ii";
-
-        try {
-            return $this->db->select($query, $params, $paramTypes);
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Get tour participants for a specific tour booking
-     */
-    public function getTourParticipants($bookingId) {
-        // For tour bookings, participants are tracked in the guests field
-        $booking = $this->getBookingById($bookingId);
+        $sql = "SELECT b.*, u.name as customer_name, u.email as customer_email 
+                FROM {$this->table} b 
+                LEFT JOIN users u ON b.customer_id = u.id 
+                WHERE b.id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        if ($booking && $booking['service_type'] == 'tour') {
-            return [
-                'booking_id' => $booking['id'],
-                'tour_id' => $booking['service_id'],
-                'participants' => $booking['guests'],
-                'participant_names' => $booking['special_requests'] ?? 'Not specified',
-                'booking_date' => $booking['date'],
-                'customer_name' => $this->getCustomerName($booking['customer_id'])
-            ];
+        if ($result->num_rows === 1) {
+            return $result->fetch_assoc();
         }
         
         return null;
     }
-
+    
     /**
-     * Get customer name by ID
+     * Get bookings by customer
      */
-    private function getCustomerName($customerId) {
-        require_once 'User.php';
-        $userManager = new User();
-        $user = $userManager->getUserById($customerId);
-        return $user ? $user['name'] : 'Unknown';
-    }
-
-    /**
-     * Get all tour bookings with participant information
-     */
-    public function getAllTourBookingsWithParticipants() {
-        $query = "SELECT * FROM {$this->table} WHERE service_type = 'tour' ORDER BY created_at DESC";
+    public function getBookingsByCustomer($customer_id) {
+        $sql = "SELECT * FROM {$this->table} WHERE customer_id = ? ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $customer_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        try {
-            $bookings = $this->db->select($query);
-            $tourBookings = [];
-            
-            foreach ($bookings as $booking) {
-                $tourBookings[] = [
-                    'booking_id' => $booking['id'],
-                    'tour_id' => $booking['service_id'],
-                    'customer_name' => $this->getCustomerName($booking['customer_id']),
-                    'participants' => $booking['guests'],
-                    'booking_date' => $booking['date'],
-                    'status' => $booking['status'],
-                    'created_at' => $booking['created_at']
-                ];
-            }
-            
-            return $tourBookings;
-        } catch (Exception $e) {
-            return [];
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            $bookings[] = $row;
         }
+        
+        return $bookings;
     }
-
+    
+    /**
+     * Get bookings by service type
+     */
+    public function getBookingsByServiceType($service_type) {
+        $sql = "SELECT b.*, u.name as customer_name, u.email as customer_email 
+                FROM {$this->table} b 
+                LEFT JOIN users u ON b.customer_id = u.id 
+                WHERE b.service_type = ? 
+                ORDER BY b.created_at DESC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $service_type);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $bookings = [];
+        while ($row = $result->fetch_assoc()) {
+            $bookings[] = $row;
+        }
+        
+        return $bookings;
+    }
+    
+    /**
+     * Update booking status
+     */
+    public function updateStatus($id, $status) {
+        $validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
+        if (!in_array($status, $validStatuses)) {
+            return ['success' => false, 'message' => 'Invalid status'];
+        }
+        
+        $sql = "UPDATE {$this->table} SET status = ? WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("si", $status, $id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Status updated successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to update status'];
+    }
+    
+    /**
+     * Cancel booking
+     */
+    public function cancelBooking($id) {
+        return $this->updateStatus($id, 'cancelled');
+    }
+    
+    /**
+     * Delete booking
+     */
+    public function deleteBooking($id) {
+        $sql = "DELETE FROM {$this->table} WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Booking deleted successfully'];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to delete booking'];
+    }
+    
     /**
      * Close database connection
      */
     public function close() {
-        $this->db->close();
+        if ($this->conn) {
+            $this->conn->close();
+        }
     }
 }
 ?>

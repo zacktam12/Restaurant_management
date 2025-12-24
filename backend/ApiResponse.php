@@ -1,152 +1,56 @@
 <?php
 /**
- * Standardized API Response Helper
- * Ensures consistent response format across all API endpoints
+ * API Response Class
+ * Handles standardized API responses
  */
-
 class ApiResponse {
+    
     /**
-     * Send a success response
-     * 
-     * @param mixed $data The data to return
-     * @param string $message Success message
-     * @param array $meta Additional metadata (pagination, etc.)
-     * @param int $httpCode HTTP status code
+     * Success response
      */
-    public static function success($data = null, $message = 'Success', $meta = [], $httpCode = 200) {
-        http_response_code($httpCode);
-        
-        $response = [
+    public static function success($data = null, $message = 'Success') {
+        return [
             'success' => true,
+            'data' => $data,
             'message' => $message
         ];
-        
-        if ($data !== null) {
-            $response['data'] = $data;
-        }
-        
-        if (!empty($meta)) {
-            $response['meta'] = $meta;
-        }
-        
-        header('Content-Type: application/json');
-        echo json_encode($response);
-        exit();
     }
     
     /**
-     * Send an error response
-     * 
-     * @param string $message Error message
-     * @param array $errors Detailed validation errors
-     * @param int $httpCode HTTP status code
-     * @param mixed $data Additional error data
+     * Error response
      */
-    public static function error($message = 'Error', $errors = [], $httpCode = 400, $data = null) {
-        http_response_code($httpCode);
-        
-        $response = [
+    public static function error($message = 'Error', $code = 400) {
+        return [
             'success' => false,
-            'message' => $message
-        ];
-        
-        if (!empty($errors)) {
-            $response['errors'] = $errors;
-        }
-        
-        if ($data !== null) {
-            $response['data'] = $data;
-        }
-        
-        header('Content-Type: application/json');
-        echo json_encode($response);
-        exit();
-    }
-    
-    /**
-     * Send a validation error response
-     * 
-     * @param array $errors Validation errors
-     * @param string $message Error message
-     */
-    public static function validationError($errors, $message = 'Validation failed') {
-        self::error($message, $errors, 422);
-    }
-    
-    /**
-     * Send a not found error response
-     * 
-     * @param string $message Error message
-     */
-    public static function notFound($message = 'Resource not found') {
-        self::error($message, [], 404);
-    }
-    
-    /**
-     * Send an unauthorized error response
-     * 
-     * @param string $message Error message
-     */
-    public static function unauthorized($message = 'Unauthorized') {
-        self::error($message, [], 401);
-    }
-    
-    /**
-     * Send a forbidden error response
-     * 
-     * @param string $message Error message
-     */
-    public static function forbidden($message = 'Forbidden') {
-        self::error($message, [], 403);
-    }
-    
-    /**
-     * Send a server error response
-     * 
-     * @param string $message Error message
-     */
-    public static function serverError($message = 'Internal server error') {
-        self::error($message, [], 500);
-    }
-    
-    /**
-     * Send a paginated response
-     * 
-     * @param array $data The data array
-     * @param int $total Total number of items
-     * @param int $page Current page
-     * @param int $perPage Items per page
-     * @param string $message Success message
-     */
-    public static function paginated($data, $total, $page, $perPage, $message = 'Success') {
-        $meta = [
-            'pagination' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'pages' => ceil($total / $perPage)
+            'error' => [
+                'code' => $code,
+                'message' => $message
             ]
         ];
-        
-        self::success($data, $message, $meta);
     }
     
     /**
-     * Send a created response
-     * 
-     * @param mixed $data The created resource data
-     * @param string $message Success message
+     * Send JSON response
      */
-    public static function created($data = null, $message = 'Resource created successfully') {
-        self::success($data, $message, [], 201);
-    }
-    
-    /**
-     * Send a no content response
-     */
-    public static function noContent() {
-        http_response_code(204);
+    public static function send($response, $statusCode = 200) {
+        http_response_code($statusCode);
+        header('Content-Type: application/json');
+        echo json_encode($response);
         exit();
+    }
+    
+    /**
+     * Send success response
+     */
+    public static function sendSuccess($data = null, $message = 'Success', $statusCode = 200) {
+        self::send(self::success($data, $message), $statusCode);
+    }
+    
+    /**
+     * Send error response
+     */
+    public static function sendError($message = 'Error', $code = 400) {
+        self::send(self::error($message, $code), $code);
     }
 }
 ?>
